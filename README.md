@@ -6,7 +6,7 @@
 ![Rust](https://img.shields.io/badge/Rust-2021-000000?logo=rust)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![License](https://img.shields.io/badge/License-Not%20Specified-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 一个以 **本地优先** 为核心理念的桌面记账应用，基于 **Tauri v2 + React + Rust + SQLite** 构建。
 
@@ -340,4 +340,4 @@ cargo check --manifest-path src-tauri/Cargo.toml
 
 ## License
 
-当前仓库尚未声明开源许可证。如果计划公开分发，建议补充 `LICENSE` 文件（如 MIT / Apache-2.0）。
+本项目采用 `MIT` 许可证，详见 `LICENSE`。
