@@ -28,7 +28,7 @@ const applyTheme = () => {
     root.style.setProperty('--color-primary-light', hexToRgba(themeColor, 0.12));
     root.style.setProperty('--color-primary-glow', hexToRgba(themeColor, 0.35));
 
-    // Background style
+    // 背景材质通过 CSS 变量切换，避免频繁 class 切换引发闪烁。
     const bgStyle = localStorage.getItem('finance_bg_style') || 'solid';
     if (bgStyle === 'mesh') {
         root.style.setProperty('--bg-app', 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)');
@@ -48,7 +48,8 @@ const App: React.FC = () => {
 
     useEffect(() => {
         applyTheme();
-        init(); // Initialize Zustand store — load all data once
+        // 应用启动时只做一次全局数据预加载。
+        init();
         window.addEventListener('storage', applyTheme);
         return () => window.removeEventListener('storage', applyTheme);
     }, [init]);
@@ -60,15 +61,15 @@ const App: React.FC = () => {
                     Finance Dashboard
                 </div>
                 <div className="titlebar-actions flex items-center h-full">
-                    <div className="titlebar-btn" onClick={() => getCurrentWindow().minimize()}>
+                    <button type="button" className="titlebar-btn" onClick={() => getCurrentWindow().minimize()}>
                         <Minus size={14} />
-                    </div>
-                    <div className="titlebar-btn" onClick={() => getCurrentWindow().toggleMaximize()}>
+                    </button>
+                    <button type="button" className="titlebar-btn" onClick={() => getCurrentWindow().toggleMaximize()}>
                         <Square size={12} />
-                    </div>
-                    <div className="titlebar-btn close-btn" onClick={() => getCurrentWindow().close()}>
+                    </button>
+                    <button type="button" className="titlebar-btn close-btn" onClick={() => getCurrentWindow().close()}>
                         <X size={14} />
-                    </div>
+                    </button>
                 </div>
             </div>
 
