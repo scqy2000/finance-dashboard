@@ -2,6 +2,8 @@ use rusqlite::{Connection, Result};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
+const SCHEMA_VERSION: i64 = 1;
+
 // Database structure mapping to JSON
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct Account {
@@ -155,11 +157,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
         "#,
     )?;
 
-    // Add columns robustly (ignore errors if they already exist, like the old JS did)
-    let _ = conn.execute("ALTER TABLE accounts ADD COLUMN credit_limit REAL", []);
-    let _ = conn.execute("ALTER TABLE accounts ADD COLUMN statement_date INTEGER", []);
-    let _ = conn.execute("ALTER TABLE accounts ADD COLUMN due_date INTEGER", []);
-    let _ = conn.execute("ALTER TABLE accounts ADD COLUMN apr REAL", []);
+    apply_migrations(&conn)?;
 
     // Seed default categories
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM categories", [], |row| row.get(0))?;
@@ -190,4 +188,75 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
     }
 
     Ok(conn)
+}
+
+fn apply_migrations(conn: &Connection) -> Result<()> {
+    let current_version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+
+    if current_version < 1 {
+        migrate_to_v1(conn)?;
+        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    }
+
+    Ok(())
+}
+
+fn migrate_to_v1(conn: &Connection) -> Result<()> {
+    ensure_column(
+        conn,
+        "accounts",
+        "credit_limit",
+        "ALTER TABLE accounts ADD COLUMN credit_limit REAL",
+    )?;
+    ensure_column(
+        conn,
+        "accounts",
+        "statement_date",
+        "ALTER TABLE accounts ADD COLUMN statement_date INTEGER",
+    )?;
+    ensure_column(
+        conn,
+        "accounts",
+        "due_date",
+        "ALTER TABLE accounts ADD COLUMN due_date INTEGER",
+    )?;
+    ensure_column(
+        conn,
+        "accounts",
+        "apr",
+        "ALTER TABLE accounts ADD COLUMN apr REAL",
+    )?;
+
+    conn.execute_batch(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC);
+        CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account_id, date DESC);
+        CREATE INDEX IF NOT EXISTS idx_installments_status ON installments(status);
+        CREATE INDEX IF NOT EXISTS idx_installment_periods_inst_status ON installment_periods(installment_id, status, period_number);
+        "#,
+    )?;
+
+    Ok(())
+}
+
+fn ensure_column(conn: &Connection, table: &str, column: &str, alter_sql: &str) -> Result<()> {
+    if !has_column(conn, table, column)? {
+        conn.execute(alter_sql, [])?;
+    }
+
+    Ok(())
+}
+
+fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
+    let mut rows = stmt.query([])?;
+
+    while let Some(row) = rows.next()? {
+        let name: String = row.get("name")?;
+        if name.eq_ignore_ascii_case(column) {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
 }

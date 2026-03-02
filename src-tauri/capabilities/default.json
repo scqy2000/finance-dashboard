@@ -14,10 +14,11 @@
     "core:window:allow-set-size",
     "core:window:allow-set-position",
     "core:window:allow-is-maximized",
-    "dialog:default",
+    "dialog:allow-open",
     "dialog:allow-save",
-    "fs:default",
+    "fs:allow-read-text-file",
     "fs:allow-write-text-file",
-    "shell:default"
+    "core:event:allow-listen",
+    "core:event:allow-emit"
   ]
 }

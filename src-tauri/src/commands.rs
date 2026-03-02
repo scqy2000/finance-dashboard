@@ -592,7 +592,7 @@ pub fn get_finance_snapshot(
 
 #[tauri::command]
 pub fn create_transaction(mut tx: Transaction, state: State<DbState>) -> Result<String, String> {
-    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     tx.id = format!(
         "tx_{}_{}",
         chrono::Utc::now().timestamp_millis(),
@@ -603,26 +603,22 @@ pub fn create_transaction(mut tx: Transaction, state: State<DbState>) -> Result<
             .collect::<String>()
     );
 
-    // Use transaction for consistency
-    conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
-    let res = (|| -> rusqlite::Result<()> {
-        conn.execute(
+    let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    tx_scope
+        .execute(
             "INSERT INTO transactions (id, account_id, amount, category, description, date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![tx.id, tx.account_id, tx.amount, tx.category, tx.description, tx.date],
-        )?;
-        // Update account balance
-        conn.execute(
+        )
+        .map_err(|e| e.to_string())?;
+
+    tx_scope
+        .execute(
             "UPDATE accounts SET balance = balance + ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
             params![tx.amount, tx.account_id],
-        )?;
-        Ok(())
-    })();
+        )
+        .map_err(|e| e.to_string())?;
 
-    if let Err(err) = res {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(err.to_string());
-    }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+    tx_scope.commit().map_err(|e| e.to_string())?;
     Ok(tx.id)
 }
 
@@ -633,107 +629,108 @@ pub fn update_transaction(
     new_data: serde_json::Value,
     state: State<DbState>,
 ) -> Result<(), String> {
-    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
 
-    conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
-    let res = (|| -> rusqlite::Result<()> {
-        let mut sets = Vec::new();
-        let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
-        let mut arg_idx = 1;
+    let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    let mut sets = Vec::new();
+    let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    let mut arg_idx = 1;
 
-        let allowed_cols = ["account_id", "amount", "category", "description", "date"];
-        let obj = new_data.as_object().ok_or(rusqlite::Error::InvalidQuery)?;
-        for (k, v) in obj {
-            if !allowed_cols.contains(&k.as_str()) {
-                continue;
-            }
-            sets.push(format!("{} = ?{}", k, arg_idx));
-            arg_idx += 1;
-            if v.is_null() {
-                args.push(Box::new(rusqlite::types::Null));
-            } else if let Some(s) = v.as_str() {
-                args.push(Box::new(s.to_string()));
-            } else if let Some(f) = v.as_f64() {
-                args.push(Box::new(f));
-            } else if let Some(i) = v.as_i64() {
-                args.push(Box::new(i));
-            }
+    let allowed_cols = ["account_id", "amount", "category", "description", "date"];
+    let obj = new_data.as_object().ok_or("Invalid data")?;
+    for (k, v) in obj {
+        if !allowed_cols.contains(&k.as_str()) {
+            continue;
         }
-        sets.push(format!("updated_at = ?{}", arg_idx));
-        args.push(Box::new(
-            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        ));
+        sets.push(format!("{} = ?{}", k, arg_idx));
         arg_idx += 1;
-        args.push(Box::new(id.clone()));
-
-        let sql = format!(
-            "UPDATE transactions SET {} WHERE id = ?{}",
-            sets.join(", "),
-            arg_idx
-        );
-
-        let mut dyn_args: Vec<&dyn rusqlite::ToSql> = Vec::new();
-        for a in &args {
-            dyn_args.push(&**a);
+        if v.is_null() {
+            args.push(Box::new(rusqlite::types::Null));
+        } else if let Some(s) = v.as_str() {
+            args.push(Box::new(s.to_string()));
+        } else if let Some(f) = v.as_f64() {
+            args.push(Box::new(f));
+        } else if let Some(i) = v.as_i64() {
+            args.push(Box::new(i));
         }
-        conn.execute(&sql, dyn_args.as_slice())?;
+    }
 
-        // Adjust balance if amount or account changed
-        let new_acc_id = obj
-            .get("account_id")
-            .and_then(|v| v.as_str())
-            .unwrap_or(&old_tx.account_id);
-        let new_amt = obj
-            .get("amount")
-            .and_then(|v| v.as_f64())
-            .unwrap_or(old_tx.amount);
+    sets.push(format!("updated_at = ?{}", arg_idx));
+    args.push(Box::new(
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+    ));
+    arg_idx += 1;
+    args.push(Box::new(id.clone()));
 
-        if old_tx.account_id == new_acc_id {
-            let diff = new_amt - old_tx.amount;
-            if diff != 0.0 {
-                conn.execute(
+    let sql = format!(
+        "UPDATE transactions SET {} WHERE id = ?{}",
+        sets.join(", "),
+        arg_idx
+    );
+
+    let mut dyn_args: Vec<&dyn rusqlite::ToSql> = Vec::new();
+    for a in &args {
+        dyn_args.push(&**a);
+    }
+
+    tx_scope
+        .execute(&sql, dyn_args.as_slice())
+        .map_err(|e| e.to_string())?;
+
+    let new_acc_id = obj
+        .get("account_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&old_tx.account_id);
+    let new_amt = obj
+        .get("amount")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(old_tx.amount);
+
+    if old_tx.account_id == new_acc_id {
+        let diff = new_amt - old_tx.amount;
+        if diff != 0.0 {
+            tx_scope
+                .execute(
                     "UPDATE accounts SET balance = balance + ?1 WHERE id = ?2",
                     params![diff, old_tx.account_id],
-                )?;
-            }
-        } else {
-            conn.execute(
+                )
+                .map_err(|e| e.to_string())?;
+        }
+    } else {
+        tx_scope
+            .execute(
                 "UPDATE accounts SET balance = balance - ?1 WHERE id = ?2",
                 params![old_tx.amount, old_tx.account_id],
-            )?;
-            conn.execute(
+            )
+            .map_err(|e| e.to_string())?;
+        tx_scope
+            .execute(
                 "UPDATE accounts SET balance = balance + ?1 WHERE id = ?2",
                 params![new_amt, new_acc_id],
-            )?;
-        }
-        Ok(())
-    })();
-
-    if let Err(err) = res {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(err.to_string());
+            )
+            .map_err(|e| e.to_string())?;
     }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+
+    tx_scope.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_transaction(tx: Transaction, state: State<DbState>) -> Result<(), String> {
-    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
-    conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
-    let res = (|| -> rusqlite::Result<()> {
-        conn.execute("DELETE FROM transactions WHERE id = ?1", params![tx.id])?;
-        conn.execute(
+    let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+
+    tx_scope
+        .execute("DELETE FROM transactions WHERE id = ?1", params![tx.id])
+        .map_err(|e| e.to_string())?;
+    tx_scope
+        .execute(
             "UPDATE accounts SET balance = balance - ?1 WHERE id = ?2",
             params![tx.amount, tx.account_id],
-        )?;
-        Ok(())
-    })();
-    if let Err(err) = res {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(err.to_string());
-    }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+        )
+        .map_err(|e| e.to_string())?;
+
+    tx_scope.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -898,7 +895,7 @@ pub fn create_installment(
     already_paid: i64,
     state: State<DbState>,
 ) -> Result<String, String> {
-    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     inst.id = format!("inst_{}", chrono::Utc::now().timestamp_millis());
 
     if already_paid < 0 || already_paid >= inst.total_periods {
@@ -923,40 +920,38 @@ pub fn create_installment(
         inst.monthly_payment
     };
 
-    conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
-    let res = (|| -> rusqlite::Result<()> {
-        conn.execute(
+    let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    tx_scope
+        .execute(
             "INSERT INTO installments (id, account_id, total_amount, total_periods, paid_periods, monthly_payment, interest_rate, start_date, description, status) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
              params![inst.id, inst.account_id, inst.total_amount, inst.total_periods, already_paid, stored_monthly_payment, inst.interest_rate, inst.start_date, inst.description, "active"]
-             )?;
+             )
+        .map_err(|e| e.to_string())?;
 
-        let periods = inst.total_periods;
-        for i in 0..periods {
-            let amt = if let Some(ref pa) = period_amounts {
-                pa[i as usize]
-            } else {
-                inst.monthly_payment
-            };
-            let is_paid = i < already_paid;
-            let status = if is_paid { "paid" } else { "pending" };
-            let paid_at = if is_paid {
-                Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string())
-            } else {
-                None
-            };
-            let pid = format!("{}_p{}", inst.id, i + 1);
-            conn.execute(
+    let periods = inst.total_periods;
+    for i in 0..periods {
+        let amt = if let Some(ref pa) = period_amounts {
+            pa[i as usize]
+        } else {
+            inst.monthly_payment
+        };
+        let is_paid = i < already_paid;
+        let status = if is_paid { "paid" } else { "pending" };
+        let paid_at = if is_paid {
+            Some(chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string())
+        } else {
+            None
+        };
+        let pid = format!("{}_p{}", inst.id, i + 1);
+        tx_scope
+            .execute(
                 "INSERT INTO installment_periods (id, installment_id, period_number, amount, status, paid_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 params![pid, inst.id, i+1, amt, status, paid_at]
-            )?;
-        }
-        Ok(())
-    })();
-    if let Err(err) = res {
-        let _ = conn.execute("ROLLBACK", []);
-        return Err(err.to_string());
+            )
+            .map_err(|e| e.to_string())?;
     }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+
+    tx_scope.commit().map_err(|e| e.to_string())?;
     Ok(inst.id)
 }
 
@@ -990,101 +985,112 @@ pub fn get_periods(
 
 #[tauri::command]
 pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
-    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
-    conn.execute("BEGIN", []).map_err(|e| e.to_string())?;
-    let res = (|| -> rusqlite::Result<()> {
-        // Find next unpaid period
-        let next_period_id: Option<String> = conn.query_row(
+    let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+
+    let next_period_id: Option<String> = tx_scope
+        .query_row(
             "SELECT id FROM installment_periods WHERE installment_id = ?1 AND status = 'pending' ORDER BY period_number LIMIT 1",
             params![&id],
-            |row| row.get(0)
-        ).optional()?;
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
 
-        if let Some(pid) = next_period_id {
-            let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-            conn.execute(
-                "UPDATE installment_periods SET status = 'paid', paid_at = ?1 WHERE id = ?2",
-                params![now, pid],
-            )?;
+    let pid = match next_period_id {
+        Some(pid) => pid,
+        None => return Err("没有待还期数".into()),
+    };
 
-            // Deduct period amount from associated account balance
-            let (period_amount, inst_account_id, period_number, inst_desc): (f64, String, i64, Option<String>) = conn.query_row(
+    let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    tx_scope
+        .execute(
+            "UPDATE installment_periods SET status = 'paid', paid_at = ?1 WHERE id = ?2",
+            params![now, pid],
+        )
+        .map_err(|e| e.to_string())?;
+
+    let (period_amount, inst_account_id, period_number, inst_desc): (f64, String, i64, Option<String>) =
+        tx_scope
+            .query_row(
                 "SELECT ip.amount, i.account_id, ip.period_number, i.description FROM installment_periods ip JOIN installments i ON ip.installment_id = i.id WHERE ip.id = ?1",
                 params![pid],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))
-            )?;
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .map_err(|e| e.to_string())?;
 
-            let tx_id = format!(
-                "txp_{}_{}",
-                chrono::Utc::now().timestamp_millis(),
-                uuid::Uuid::new_v4()
-                    .to_string()
-                    .chars()
-                    .take(4)
-                    .collect::<String>()
-            );
-            let tx_date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
-            let tx_desc = inst_desc
-                .map(|d| format!("{} 第{}期还款", d, period_number))
-                .unwrap_or_else(|| format!("分期第{}期还款", period_number));
+    let tx_id = format!(
+        "txp_{}_{}",
+        chrono::Utc::now().timestamp_millis(),
+        uuid::Uuid::new_v4()
+            .to_string()
+            .chars()
+            .take(4)
+            .collect::<String>()
+    );
+    let tx_date = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S").to_string();
+    let tx_desc = inst_desc
+        .map(|d| format!("{} 第{}期还款", d, period_number))
+        .unwrap_or_else(|| format!("分期第{}期还款", period_number));
 
-            conn.execute(
-                "INSERT INTO transactions (id, account_id, amount, category, description, date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-                params![tx_id, inst_account_id, -period_amount, "分期还款", tx_desc, tx_date],
-            )?;
+    tx_scope
+        .execute(
+            "INSERT INTO transactions (id, account_id, amount, category, description, date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![tx_id, inst_account_id, -period_amount, "分期还款", tx_desc, tx_date],
+        )
+        .map_err(|e| e.to_string())?;
 
-            conn.execute(
-                "UPDATE accounts SET balance = balance - ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
-                params![period_amount, inst_account_id]
-            )?;
+    tx_scope
+        .execute(
+            "UPDATE accounts SET balance = balance - ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+            params![period_amount, inst_account_id],
+        )
+        .map_err(|e| e.to_string())?;
 
-            // update installment
-            conn.execute(
-                "UPDATE installments SET paid_periods = paid_periods + 1 WHERE id = ?1",
+    tx_scope
+        .execute(
+            "UPDATE installments SET paid_periods = paid_periods + 1 WHERE id = ?1",
+            params![&id],
+        )
+        .map_err(|e| e.to_string())?;
+
+    let (remaining_sum, remaining_count): (Option<f64>, i64) = tx_scope
+        .query_row(
+            "SELECT SUM(amount), COUNT(*) FROM installment_periods WHERE installment_id = ?1 AND status = 'pending'",
+            params![&id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    let next_monthly_payment = if remaining_count > 0 {
+        remaining_sum.unwrap_or(0.0) / remaining_count as f64
+    } else {
+        0.0
+    };
+
+    tx_scope
+        .execute(
+            "UPDATE installments SET monthly_payment = ?1 WHERE id = ?2",
+            params![next_monthly_payment, &id],
+        )
+        .map_err(|e| e.to_string())?;
+
+    let (total, paid): (i64, i64) = tx_scope
+        .query_row(
+            "SELECT total_periods, paid_periods FROM installments WHERE id = ?1",
+            params![&id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    if paid >= total {
+        tx_scope
+            .execute(
+                "UPDATE installments SET status = 'completed' WHERE id = ?1",
                 params![&id],
-            )?;
-
-            let (remaining_sum, remaining_count): (Option<f64>, i64) = conn.query_row(
-                "SELECT SUM(amount), COUNT(*) FROM installment_periods WHERE installment_id = ?1 AND status = 'pending'",
-                params![&id],
-                |row| Ok((row.get(0)?, row.get(1)?))
-            )?;
-            let next_monthly_payment = if remaining_count > 0 {
-                remaining_sum.unwrap_or(0.0) / remaining_count as f64
-            } else {
-                0.0
-            };
-            conn.execute(
-                "UPDATE installments SET monthly_payment = ?1 WHERE id = ?2",
-                params![next_monthly_payment, &id],
-            )?;
-
-            // Check if completed
-            let (total, paid): (i64, i64) = conn.query_row(
-                "SELECT total_periods, paid_periods FROM installments WHERE id = ?1",
-                params![&id],
-                |row| Ok((row.get(0)?, row.get(1)?)),
-            )?;
-            if paid >= total {
-                conn.execute(
-                    "UPDATE installments SET status = 'completed' WHERE id = ?1",
-                    params![&id],
-                )?;
-            }
-            Ok(())
-        } else {
-            Err(rusqlite::Error::QueryReturnedNoRows)
-        }
-    })();
-
-    if let Err(err) = res {
-        let _ = conn.execute("ROLLBACK", []);
-        if matches!(err, rusqlite::Error::QueryReturnedNoRows) {
-            return Err("没有待还期数".into());
-        }
-        return Err(err.to_string());
+            )
+            .map_err(|e| e.to_string())?;
     }
-    conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+
+    tx_scope.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
