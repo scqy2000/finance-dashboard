@@ -2,26 +2,14 @@ name: Build Windows Installers
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - "tsconfig*.json"
-      - ".github/workflows/build-windows.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "src/**"
-      - "src-tauri/**"
-      - "package.json"
-      - "package-lock.json"
-      - "vite.config.ts"
-      - "tsconfig*.json"
-      - ".github/workflows/build-windows.yml"
+    inputs:
+      tag_name:
+        description: "要创建并推送的标签（例如 v0.2.0）"
+        required: true
+        type: string
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
@@ -31,6 +19,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -70,3 +60,27 @@ jobs:
           name: windows-exe
           path: src-tauri/target/release/finance-dashboard.exe
           if-no-files-found: warn
+
+      - name: Create and push tag
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.tag_name }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "tag_name 不能为空"
+          }
+
+          if ($tag -notmatch '^v?\d+\.\d+\.\d+([.-][0-9A-Za-z.-]+)?$') {
+            throw "tag_name 格式无效: $tag（示例: v0.2.0）"
+          }
+
+          $exists = git ls-remote --tags origin "refs/tags/$tag"
+          if ($exists) {
+            throw "远端标签已存在: $tag"
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+          Write-Host "Tag pushed: $tag"
