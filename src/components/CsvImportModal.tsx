@@ -3,6 +3,8 @@ import { X, Upload, FileText, AlertCircle, CheckCircle2, Loader2 } from 'lucide-
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { inputDateTimeToStorage } from '../utils/datetime';
+import { autoDetectMapping, COLUMN_OPTIONS, ColumnMapping, parseCsv } from './csv/parser';
+import { getErrorMessage } from '../utils/errors';
 
 type ImportRow = {
     account_id: string;
@@ -32,65 +34,6 @@ interface CsvImportModalProps {
     onImport: (rows: ImportRow[]) => Promise<ImportResult>;
 }
 
-// CSV parser with quote/newline support
-function parseCsv(text: string): string[][] {
-    const rows: string[][] = [];
-    let fields: string[] = [];
-    let current = '';
-    let inQuotes = false;
-
-    const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    for (let i = 0; i < normalized.length; i += 1) {
-        const ch = normalized[i];
-
-        if (inQuotes) {
-            if (ch === '"' && normalized[i + 1] === '"') {
-                current += '"';
-                i += 1;
-            } else if (ch === '"') {
-                inQuotes = false;
-            } else {
-                current += ch;
-            }
-            continue;
-        }
-
-        if (ch === '"') {
-            inQuotes = true;
-        } else if (ch === ',') {
-            fields.push(current.trim());
-            current = '';
-        } else if (ch === '\n') {
-            fields.push(current.trim());
-            if (fields.some(v => v !== '')) {
-                rows.push(fields);
-            }
-            fields = [];
-            current = '';
-        } else {
-            current += ch;
-        }
-    }
-
-    fields.push(current.trim());
-    if (fields.some(v => v !== '')) {
-        rows.push(fields);
-    }
-
-    return rows;
-}
-
-type ColumnMapping = 'date' | 'type' | 'account' | 'amount' | 'category' | 'description' | 'skip';
-
-const COLUMN_OPTIONS: { value: ColumnMapping; label: string }[] = [
-    { value: 'skip', label: '跳过' },
-    { value: 'date', label: '日期' },
-    { value: 'type', label: '类型' },
-    { value: 'account', label: '账户' },
-    { value: 'amount', label: '金额' },
-    { value: 'category', label: '分类' },
-    { value: 'description', label: '描述' },
-];
 
 export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, accounts, onClose, onImport }) => {
     const [step, setStep] = useState<'select' | 'preview' | 'importing' | 'done'>('select');
@@ -101,20 +44,6 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, accounts
     const [result, setResult] = useState<ImportResult | null>(null);
     const [error, setError] = useState('');
     const [fileName, setFileName] = useState('');
-
-    // Auto-detect column mapping from header names
-    const autoDetectMapping = (headers: string[]): ColumnMapping[] => {
-        return headers.map(h => {
-            const lower = h.toLowerCase();
-            if (lower.includes('日期') || lower.includes('date') || lower.includes('time') || lower.includes('时间')) return 'date';
-            if (lower.includes('类型') || lower.includes('type') || lower.includes('收支')) return 'type';
-            if (lower.includes('账户') || lower.includes('account') || lower.includes('wallet') || lower.includes('card')) return 'account';
-            if (lower.includes('金额') || lower.includes('amount') || lower.includes('money') || lower.includes('数额')) return 'amount';
-            if (lower.includes('分类') || lower.includes('类别') || lower.includes('category')) return 'category';
-            if (lower.includes('描述') || lower.includes('备注') || lower.includes('说明') || lower.includes('desc') || lower.includes('note') || lower.includes('摘要')) return 'description';
-            return 'skip';
-        });
-    };
 
     const handleSelectFile = async () => {
         try {
@@ -328,8 +257,8 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, accounts
                 failedRows: [...localFailedRows, ...remoteFailed],
             });
             setStep('done');
-        } catch (e: any) {
-            setError('导入过程中出错: ' + (e.message || e));
+        } catch (e: unknown) {
+            setError('导入过程中出错: ' + getErrorMessage(e));
             setStep('preview');
         }
     };

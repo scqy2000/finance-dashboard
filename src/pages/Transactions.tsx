@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Download, Upload, Trash2, Pencil, Settings2, MoreVertical, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Download, Upload, Settings2, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { useAccounts } from '../hooks/useAccounts';
@@ -9,6 +9,7 @@ import type { Transaction, TransactionFilters, TransactionPage } from '../api/db
 import { TransactionEditModal } from '../components/TransactionEditModal';
 import { CategoryManager } from '../components/CategoryManager';
 import { CsvImportModal } from '../components/CsvImportModal';
+import { ActionMenu } from '../components/transactions/ActionMenu';
 import {
     dateOnlyForFileName,
     inputDateTimeToStorage,
@@ -16,6 +17,9 @@ import {
     localDateOnlyToStartIso,
     nowLocalDateTimeInputValue,
 } from '../utils/datetime';
+import { formatMoneyCny, formatTimeZh } from '../utils/formatters';
+import { getErrorMessage } from '../utils/errors';
+import { useFeedback } from '../components/ui/FeedbackProvider';
 
 const PAGE_SIZE = 50;
 
@@ -42,36 +46,8 @@ const EMPTY_PAGE: TransactionPage = {
     has_more: false,
 };
 
-const ActionMenu: React.FC<{ onEdit: () => void; onDelete: () => void }> = ({ onEdit, onDelete }) => {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
-            }
-        };
-        if (open) document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, [open]);
-
-    return (
-        <div className="relative" ref={ref}>
-            <button className="border-none bg-none text-[var(--text-tertiary)] p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer hover:text-[var(--text-primary)] hover:bg-black/5" onClick={e => { e.stopPropagation(); setOpen(!open); }} title="操作">
-                <MoreVertical size={16} />
-            </button>
-            {open && (
-                <div className="motion-dropdown-fade absolute right-0 top-full bg-[var(--bg-surface-solid)] border border-[var(--border-light)] rounded-[var(--radius-md)] shadow-lg z-[100] min-w-[120px] p-1 backdrop-blur-[20px]" onClick={e => e.stopPropagation()}>
-                    <button className="flex items-center gap-2 w-full py-2 px-3 border-none bg-none text-[13px] text-[var(--text-primary)] cursor-pointer rounded-[var(--radius-sm)] transition-colors duration-150 hover:bg-[var(--bg-surface-hover)]" onClick={() => { onEdit(); setOpen(false); }}><Pencil size={13} /> 编辑</button>
-                    <button className="flex items-center gap-2 w-full py-2 px-3 border-none bg-none text-[13px] text-[var(--color-danger)] cursor-pointer rounded-[var(--radius-sm)] transition-colors duration-150 hover:bg-[var(--color-danger-bg)]" onClick={() => { onDelete(); setOpen(false); }}><Trash2 size={13} /> 删除</button>
-                </div>
-            )}
-        </div>
-    );
-};
-
 export const Transactions: React.FC = () => {
+    const { toast, confirm } = useFeedback();
     const { accounts, refreshAccounts } = useAccounts();
     const { categories, refreshCategories, addCategory, updateCategory, deleteCategory } = useCategories();
 
@@ -151,8 +127,8 @@ export const Transactions: React.FC = () => {
             if (data.page !== targetPage) {
                 setPage(data.page);
             }
-        } catch (e: any) {
-            setLoadError(e?.message || '流水加载失败');
+        } catch (e: unknown) {
+            setLoadError(getErrorMessage(e, '流水加载失败'));
         } finally {
             setLoading(false);
         }
@@ -181,11 +157,11 @@ export const Transactions: React.FC = () => {
             try {
                 await TransactionsApi.create(row);
                 success++;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 failed++;
                 failedRows.push({
                     index: i + 1,
-                    reason: e?.message || '未知错误',
+                    reason: getErrorMessage(e),
                     row,
                 });
             }
@@ -208,7 +184,10 @@ export const Transactions: React.FC = () => {
                 current += 1;
             }
 
-            if (exportRows.length === 0) return alert('暂无数据可导出');
+            if (exportRows.length === 0) {
+                toast('暂无数据可导出', 'info');
+                return;
+            }
 
             const filePath = await save({
                 defaultPath: `流水记录_${dateOnlyForFileName()}.csv`,
@@ -228,9 +207,9 @@ export const Transactions: React.FC = () => {
 
             const csv = '\uFEFF' + [header, ...rows].join('\n');
             await writeTextFile(filePath, csv);
-            alert(`已成功导出 ${exportRows.length} 条记录`);
-        } catch (e: any) {
-            alert('导出失败: ' + (e?.message || '未知错误'));
+            toast(`已成功导出 ${exportRows.length} 条记录`, 'success');
+        } catch (e: unknown) {
+            toast('导出失败: ' + getErrorMessage(e), 'error');
         }
     };
 
@@ -247,12 +226,16 @@ export const Transactions: React.FC = () => {
     const currentCategories = categories.filter(c => c.type === txType);
 
     const handleSave = async () => {
-        if (!amount || !accountId) return alert('请输入金额并选择关联账户');
+        if (!amount || !accountId) {
+            toast('请输入金额并选择关联账户', 'error');
+            return;
+        }
 
         try {
             let numericAmount = parseFloat(amount);
             if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-                return alert('请输入有效金额');
+                toast('请输入有效金额', 'error');
+                return;
             }
             if (txType === 'expense') numericAmount = -Math.abs(numericAmount);
             else numericAmount = Math.abs(numericAmount);
@@ -273,23 +256,26 @@ export const Transactions: React.FC = () => {
             setDate(nowLocalDateTimeInputValue());
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 2000);
+            toast('保存成功', 'success');
 
             await refreshAccounts();
             setPage(1);
             await loadPage(1);
-        } catch (e: any) {
-            alert('保存失败: ' + (e?.message || '未知错误'));
+        } catch (e: unknown) {
+            toast('保存失败: ' + getErrorMessage(e), 'error');
         }
     };
 
     const handleDelete = async (tx: Transaction) => {
-        if (!confirm(`确定删除"${tx.description || tx.category}"？`)) return;
+        const ok = await confirm('确认删除', `确定删除"${tx.description || tx.category}"？`);
+        if (!ok) return;
         try {
             await TransactionsApi.delete(tx);
             await refreshAccounts();
             await loadPage(page);
-        } catch (e: any) {
-            alert('删除失败: ' + (e?.message || '未知错误'));
+            toast('删除成功', 'success');
+        } catch (e: unknown) {
+            toast('删除失败: ' + getErrorMessage(e), 'error');
         }
     };
 
@@ -299,23 +285,9 @@ export const Transactions: React.FC = () => {
             await refreshAccounts();
             await loadPage(page);
             return true;
-        } catch (e: any) {
-            alert('保存失败: ' + (e?.message || '未知错误'));
+        } catch (e: unknown) {
+            toast('保存失败: ' + getErrorMessage(e), 'error');
             return false;
-        }
-    };
-
-    const formatMoney = (n: number) => {
-        const prefix = n > 0 ? '+' : '';
-        return prefix + new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(n);
-    };
-
-    const formatTime = (isoDate: string) => {
-        try {
-            const d = new Date(isoDate);
-            return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-        } catch {
-            return '';
         }
     };
 
@@ -426,14 +398,14 @@ export const Transactions: React.FC = () => {
                                                 </div>
                                                 <div className="flex flex-col gap-0.5">
                                                     <span className="text-sm font-semibold text-[var(--text-primary)]">{tx.description || tx.category}</span>
-                                                    <span className="text-xs text-[var(--text-tertiary)]">{tx.category} · {formatTime(tx.date)}</span>
+                                                    <span className="text-xs text-[var(--text-tertiary)]">{tx.category} · {formatTimeZh(tx.date)}</span>
                                                 </div>
                                             </div>
                                             <div className="flex-1">
                                                 <span className={`text-xs py-1 px-2 rounded-full font-medium ${getAccountClass(tx.account_id)}`}>{getAccountName(tx.account_id)}</span>
                                             </div>
                                             <div className={`w-[120px] text-right font-semibold text-[15px] ${tx.amount < 0 ? 'text-[var(--text-primary)]' : 'text-[var(--color-success)]'}`}>
-                                                {formatMoney(tx.amount)}
+                                                {formatMoneyCny(tx.amount)}
                                             </div>
                                             <div className="w-10 text-right">
                                                 <ActionMenu onEdit={() => setEditingTx(tx)} onDelete={() => handleDelete(tx)} />
