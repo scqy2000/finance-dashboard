@@ -7,6 +7,7 @@ import { AccountModal } from '../components/AccountModal';
 import { InstallmentModal } from '../components/InstallmentModal';
 import { Account } from '../api/db';
 import { useStore } from '../store/useStore';
+import { useFeedback } from '../components/ui/FeedbackProvider';
 
 // Inline Account Edit Modal
 const AccountEditModal: React.FC<{
@@ -15,6 +16,7 @@ const AccountEditModal: React.FC<{
     onSave: (id: string, data: Partial<Account>) => Promise<boolean>;
     onDelete: (id: string) => Promise<boolean>;
 }> = ({ account, onClose, onSave, onDelete }) => {
+    const { toast, confirm } = useFeedback();
     const [name, setName] = useState('');
     const [balance, setBalance] = useState('');
     const [color, setColor] = useState('');
@@ -50,8 +52,13 @@ const AccountEditModal: React.FC<{
     };
 
     const handleDelete = async () => {
-        if (confirm(`确定删除账户"${account.name}"吗？该账户下的所有流水和分期记录也将被一并删除！`)) {
+        const ok = await confirm(
+            '确认删除账户',
+            `确定删除账户"${account.name}"吗？该账户下的所有流水和分期记录也将被一并删除！`
+        );
+        if (ok) {
             await onDelete(account.id);
+            toast('账户已删除', 'success');
             onClose();
         }
     };
@@ -116,6 +123,7 @@ const AccountEditModal: React.FC<{
 };
 
 export const Accounts: React.FC = () => {
+    const { toast, confirm } = useFeedback();
     const { accounts, loading, refreshAccounts, addAccount, updateAccount, deleteAccount } = useAccounts();
     const { installments, addInstallment, payPeriod, cancelInstallment, getPeriods } = useInstallments();
     const refreshAll = useStore(s => s.refreshAll);
@@ -125,13 +133,15 @@ export const Accounts: React.FC = () => {
     const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     const handleSync = async () => {
-        if (confirm('是否清空现有数据并注入测试预设假数据？')) {
+        const ok = await confirm('确认注入测试数据', '是否清空现有数据并注入测试预设假数据？');
+        if (ok) {
             const ok = await seedDatabase();
             if (ok) {
                 await refreshAll();
+                toast('测试数据已注入', 'success');
             } else {
                 await refreshAccounts();
-                alert('注入测试数据失败，请查看控制台日志。');
+                toast('注入测试数据失败，请查看控制台日志。', 'error');
             }
         }
     };
@@ -139,8 +149,13 @@ export const Accounts: React.FC = () => {
     const handleOpenModal = (type: 'asset' | 'liability') => { setModalType(type); setIsModalOpen(true); };
 
     const handleDeleteCard = async (acc: Account) => {
-        if (confirm(`确定删除账户"${acc.name}"吗？\n\n该账户下的所有流水和分期记录也将被一并删除！`)) {
+        const ok = await confirm(
+            '确认删除账户',
+            `确定删除账户"${acc.name}"吗？\n\n该账户下的所有流水和分期记录也将被一并删除！`
+        );
+        if (ok) {
             await deleteAccount(acc.id);
+            toast('账户已删除', 'success');
         }
     };
 

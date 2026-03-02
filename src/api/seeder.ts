@@ -1,6 +1,7 @@
 import { AccountsApi } from './db';
+import type { Account } from './db';
 
-const SEED_ACCOUNTS = [
+const SEED_ACCOUNTS: Partial<Account>[] = [
     { name: '招行储蓄卡', type: 'asset', balance: 14480.00, color: '#e11d48' },
     { name: '支付宝余额', type: 'asset', balance: 2500.00, color: '#0284c7' },
     { name: '花呗', type: 'liability', balance: -1500.00, color: '#0ea5e9', credit_limit: 10000, statement_date: 1, due_date: 10 },
@@ -18,7 +19,7 @@ export const seedDatabase = async () => {
         }
 
         for (const acc of SEED_ACCOUNTS) {
-            await AccountsApi.create(acc as any);
+            await AccountsApi.create(acc);
         }
         console.log('Database seeded successfully.');
         return true;

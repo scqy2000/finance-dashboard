@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, Key, Server, Cpu, Save, Trash2, CheckCircle2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { SecureConfigApi } from '../api/db';
+import { getErrorMessage } from '../utils/errors';
+import { useFeedback } from '../components/ui/FeedbackProvider';
 
 export const Settings: React.FC = () => {
+    const { toast, confirm } = useFeedback();
     const [apiKey, setApiKey] = useState('');
     const [baseUrl, setBaseUrl] = useState('https://api.openai.com/v1');
     const [model, setModel] = useState('gpt-4o');
@@ -75,13 +78,15 @@ export const Settings: React.FC = () => {
             window.dispatchEvent(new Event('branding-updated'));
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-        } catch (e: any) {
-            alert('保存失败: ' + (e?.message || '未知错误'));
+            toast('设置已保存', 'success');
+        } catch (e: unknown) {
+            toast('保存失败: ' + getErrorMessage(e), 'error');
         }
     };
 
     const handleClear = async () => {
-        if (confirm('确定要清除所有本地保存的 API 配置吗？')) {
+        const ok = await confirm('确认清除', '确定要清除所有本地保存的 API 配置吗？');
+        if (ok) {
             try {
                 await SecureConfigApi.clearApiKey();
             } catch {
@@ -93,6 +98,7 @@ export const Settings: React.FC = () => {
             setApiKey('');
             setBaseUrl('https://api.openai.com/v1');
             setModel('gpt-4o');
+            toast('配置已清除', 'success');
         }
     };
 

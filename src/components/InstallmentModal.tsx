@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, CircleDollarSign, CheckCircle2, Ban, ChevronDown, ChevronUp, ListOrdered, Minus } from 'lucide-react';
 import { Installment, InstallmentPeriod, Account } from '../api/db';
+import { useFeedback } from './ui/FeedbackProvider';
 
 interface InstallmentModalProps {
     isOpen: boolean;
@@ -16,6 +17,7 @@ interface InstallmentModalProps {
 type InputMode = 'equal' | 'custom';
 
 export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, account, installments, onClose, onAdd, onPay, onCancel, onGetPeriods }) => {
+    const { toast } = useFeedback();
     const [showForm, setShowForm] = useState(false);
     const [totalAmount, setTotalAmount] = useState('');
     const [totalPeriods, setTotalPeriods] = useState('12');
@@ -70,14 +72,21 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
     if (!isOpen || !account) return null;
 
     const handleCreate = async () => {
-        if (!totalAmount || parseFloat(totalAmount) <= 0) return alert('请输入分期总金额');
+        if (!totalAmount || parseFloat(totalAmount) <= 0) {
+            toast('请输入分期总金额', 'error');
+            return;
+        }
         const paidCount = parseInt(alreadyPaid || '0');
-        if (paidCount >= periods) return alert('已还期数不能大于等于总期数');
+        if (paidCount >= periods) {
+            toast('已还期数不能大于等于总期数', 'error');
+            return;
+        }
 
         if (inputMode === 'custom') {
             const expected = parseFloat(totalAmount || '0');
             if (Math.abs(customTotal - expected) > 0.01) {
-                return alert('自定义每期金额合计需与分期总金额一致');
+                toast('自定义每期金额合计需与分期总金额一致', 'error');
+                return;
             }
         }
 
@@ -98,6 +107,7 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
             start_date: startDate,
             description: description || `${account.name} 分期`,
         }, periodAmounts, paidCount > 0 ? paidCount : undefined);
+        toast('分期计划已创建', 'success');
         setShowForm(false);
         setTotalAmount(''); setDescription(''); setAlreadyPaid('0'); setInputMode('equal'); setCustomAmounts([]);
     };

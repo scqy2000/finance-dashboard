@@ -4,6 +4,8 @@ import { AIChatService } from '../api/ai';
 import { FinanceApi } from '../api/db';
 import type { FinanceSnapshot } from '../api/db';
 import { nowLocalIso, startOfCurrentMonthLocalIso } from '../utils/datetime';
+import { getErrorMessage } from '../utils/errors';
+import { useFeedback } from '../components/ui/FeedbackProvider';
 
 interface Message {
     id: string;
@@ -48,6 +50,7 @@ function saveMessages(msgs: Message[]) {
 }
 
 export const Analytics: React.FC = () => {
+    const { toast, confirm } = useFeedback();
     const [messages, setMessages] = useState<Message[]>(loadMessages);
     const [input, setInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -73,9 +76,9 @@ export const Analytics: React.FC = () => {
                     setSnapshot(data);
                     setSnapshotError(null);
                 }
-            } catch (e: any) {
+            } catch (e: unknown) {
                 if (!cancelled) {
-                    setSnapshotError(e?.message || '加载财务快照失败');
+                    setSnapshotError(getErrorMessage(e, '加载财务快照失败'));
                 }
             }
         };
@@ -104,8 +107,9 @@ export const Analytics: React.FC = () => {
             }, history);
 
             setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, isStreaming: false } : m));
-        } catch (error: any) {
-            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: `错误：${error.message}`, isStreaming: false } : m));
+        } catch (error: unknown) {
+            setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: `错误：${getErrorMessage(error)}`, isStreaming: false } : m));
+            toast('AI 请求失败: ' + getErrorMessage(error), 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -127,11 +131,13 @@ export const Analytics: React.FC = () => {
         });
     }, []);
 
-    const handleClearAll = useCallback(() => {
-        if (confirm('确定清空所有聊天记录吗？')) {
+    const handleClearAll = useCallback(async () => {
+        const ok = await confirm('确认清空', '确定清空所有聊天记录吗？');
+        if (ok) {
             setMessages([DEFAULT_MSG]);
+            toast('聊天记录已清空', 'success');
         }
-    }, []);
+    }, [confirm, toast]);
 
     const handleQuickPrompt = (prompt: string) => {
         setInput(prompt);

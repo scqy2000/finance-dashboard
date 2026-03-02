@@ -3,6 +3,7 @@ import { ArrowUpRight, ArrowDownRight, Wallet, CreditCard, TrendingUp } from 'lu
 import { FinanceApi } from '../api/db';
 import type { FinanceSnapshot } from '../api/db';
 import { dateToLocalIso, nowLocalIso } from '../utils/datetime';
+import { getErrorMessage } from '../utils/errors';
 
 type TimeRange = 'week' | 'month' | 'quarter' | 'year';
 const TIME_RANGE_LABELS: Record<TimeRange, string> = { week: '本周', month: '本月', quarter: '本季', year: '全年' };
@@ -55,8 +56,8 @@ export const Dashboard: React.FC = () => {
             try {
                 const data = await FinanceApi.getSnapshot(getTimeRangeStart(timeRange), nowLocalIso(), 5);
                 if (!cancelled) setSummary(data);
-            } catch (e: any) {
-                if (!cancelled) setError(e?.message || '加载财务概览失败');
+            } catch (e: unknown) {
+                if (!cancelled) setError(getErrorMessage(e, '加载财务概览失败'));
             } finally {
                 if (!cancelled) setLoading(false);
             }
