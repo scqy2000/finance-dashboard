@@ -1,6 +1,7 @@
 const pad = (n: number) => String(n).padStart(2, '0');
 
 const formatLocal = (date: Date) => {
+    // 统一使用本地时间格式化，避免 toISOString() 引入时区偏移。
     const year = date.getFullYear();
     const month = pad(date.getMonth() + 1);
     const day = pad(date.getDate());
@@ -49,6 +50,7 @@ export const localDateOnlyToExclusiveEndIso = (dateOnly: string) => {
     if (Number.isNaN(date.getTime())) {
         return null;
     }
+    // 结束边界采用“次日 00:00:00（不含）”语义，便于后端写 [from, to) 查询。
     date.setDate(date.getDate() + 1);
     return formatLocal(date).datetimeSecond;
 };

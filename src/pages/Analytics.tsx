@@ -59,6 +59,7 @@ export const Analytics: React.FC = () => {
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        // 仅在非流式输出阶段落盘，避免 streaming 过程中频繁写 localStorage。
         if (!isGenerating) saveMessages(messages);
     }, [messages, isGenerating]);
 
@@ -102,6 +103,7 @@ export const Analytics: React.FC = () => {
                 .filter(m => m.id !== '1' && m.id !== aiMsgId && !m.isStreaming)
                 .map(m => ({ role: m.role, content: m.content }));
 
+            // onChunk 返回的是“当前累计文本”，这里直接覆盖消息内容即可。
             await AIChatService.sendMessage(userMsg.content, (chunk) => {
                 setMessages(prev => prev.map(m => m.id === aiMsgId ? { ...m, content: chunk } : m));
             }, history);

@@ -12,6 +12,7 @@ function getTimeRangeStart(range: TimeRange): string {
     const now = new Date();
     switch (range) {
         case 'week': {
+            // 以周一作为一周起点；周日场景回拨到上周一。
             const d = new Date(now);
             d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1));
             d.setHours(0, 0, 0, 0);

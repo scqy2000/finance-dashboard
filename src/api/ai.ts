@@ -19,6 +19,7 @@ export const AIChatService = {
         }
 
         // 2. Gather Context
+        // 先拉取聚合快照，再补账户明细，避免直接拉取大量流水导致 token 膨胀。
         const [accounts, snapshot] = await Promise.all([
             AccountsApi.getAll(),
             FinanceApi.getSnapshot(startOfCurrentMonthLocalIso(), nowLocalIso(), 12),
@@ -54,7 +55,7 @@ ${snapshot.recent_transactions.length > 0 ? snapshot.recent_transactions.map(t =
         const messages: { role: string; content: string }[] = [
             { role: 'system', content: getSystemPrompt() + '\n' + contextInfo },
         ];
-        // Append conversation history (last 10 turns max to stay within token limits)
+        // 限制历史窗口，防止上下文过长导致响应变慢或超 token。
         if (history && history.length > 0) {
             const recentHistory = history.slice(-20); // last 20 messages (10 turns)
             messages.push(...recentHistory);
@@ -88,7 +89,8 @@ ${snapshot.recent_transactions.length > 0 ? snapshot.recent_transactions.map(t =
                 const reader = response.body?.getReader();
                 const decoder = new TextDecoder('utf-8');
                 let fullText = '';
-                let buffer = ''; // Buffer for incomplete SSE lines across chunks
+                // 跨 chunk 缓冲区：避免 JSON 被截断时解析失败。
+                let buffer = '';
 
                 if (reader) {
                     let streamDone = false;
@@ -98,7 +100,7 @@ ${snapshot.recent_transactions.length > 0 ? snapshot.recent_transactions.map(t =
 
                         buffer += decoder.decode(value, { stream: true });
 
-                        // Split by newlines; last element may be incomplete
+                        // 按行切分 SSE 帧，最后一段可能不完整，留到下一轮拼接。
                         const parts = buffer.split('\n');
                         buffer = parts.pop() || ''; // Keep the potentially incomplete last part
 

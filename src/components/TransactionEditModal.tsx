@@ -40,6 +40,8 @@ export const TransactionEditModal: React.FC<TransactionEditModalProps> = ({ isOp
         e.preventDefault();
         if (!amount) return alert('请输入金额');
         setIsSaving(true);
+
+        // 编辑时用户输入始终按“绝对值”处理，再根据原交易类型恢复正负号。
         let numericAmount = parseFloat(amount);
         if (isExpense) numericAmount = -Math.abs(numericAmount);
         else numericAmount = Math.abs(numericAmount);

@@ -26,6 +26,7 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const confirmResolver = useRef<((value: boolean) => void) | null>(null);
 
     const toast = useCallback((message: string, type: ToastType = 'info') => {
+        // 轻量通知：统一自动消失策略，减少各页面重复实现。
         const id = `${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;
         setToasts(prev => [...prev, { id, message, type }]);
         window.setTimeout(() => {
@@ -34,6 +35,7 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, []);
 
     const confirm = useCallback((title: string, message: string) => {
+        // confirm 返回 Promise，让业务代码可以像 await 原生 confirm 一样串行书写。
         setConfirmState({ title, message });
         return new Promise<boolean>(resolve => {
             confirmResolver.current = resolve;

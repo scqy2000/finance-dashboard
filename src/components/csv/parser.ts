@@ -16,10 +16,12 @@ export function parseCsv(text: string): string[][] {
     let current = '';
     let inQuotes = false;
 
+    // 统一换行符，避免 Windows / macOS / Linux 文本差异影响解析。
     const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     for (let i = 0; i < normalized.length; i += 1) {
         const ch = normalized[i];
 
+        // 引号内允许出现逗号和换行；连续双引号视为转义后的单引号。
         if (inQuotes) {
             if (ch === '"' && normalized[i + 1] === '"') {
                 current += '"';
@@ -38,6 +40,7 @@ export function parseCsv(text: string): string[][] {
             fields.push(current.trim());
             current = '';
         } else if (ch === '\n') {
+            // 只有在“非引号状态”下遇到换行，才认为一行结束。
             fields.push(current.trim());
             if (fields.some(v => v !== '')) {
                 rows.push(fields);

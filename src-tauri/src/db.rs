@@ -2,6 +2,7 @@ use rusqlite::{Connection, Result};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
+// 当前 schema 版本号；每次新增迁移时递增。
 const SCHEMA_VERSION: i64 = 1;
 
 // Database structure mapping to JSON
@@ -191,6 +192,7 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
 }
 
 fn apply_migrations(conn: &Connection) -> Result<()> {
+    // 使用 SQLite 原生 user_version 做轻量迁移编排，避免依赖外部迁移框架。
     let current_version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
 
     if current_version < 1 {
@@ -202,6 +204,7 @@ fn apply_migrations(conn: &Connection) -> Result<()> {
 }
 
 fn migrate_to_v1(conn: &Connection) -> Result<()> {
+    // v1 目标：补齐历史版本可能缺失的字段，并确保查询索引存在。
     ensure_column(
         conn,
         "accounts",
@@ -240,6 +243,7 @@ fn migrate_to_v1(conn: &Connection) -> Result<()> {
 }
 
 fn ensure_column(conn: &Connection, table: &str, column: &str, alter_sql: &str) -> Result<()> {
+    // 先检查再 ALTER，避免重复执行导致初始化报错。
     if !has_column(conn, table, column)? {
         conn.execute(alter_sql, [])?;
     }
@@ -248,6 +252,7 @@ fn ensure_column(conn: &Connection, table: &str, column: &str, alter_sql: &str) 
 }
 
 fn has_column(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    // PRAGMA table_info 返回当前表结构，按列名做不区分大小写匹配。
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({})", table))?;
     let mut rows = stmt.query([])?;
 

@@ -78,6 +78,7 @@ export const Transactions: React.FC = () => {
     const [showCsvImport, setShowCsvImport] = useState(false);
 
     const activeFilters = useMemo<TransactionFilters>(() => {
+        // 统一在这里做过滤参数归一化，确保分页查询与导出查询使用同一套条件。
         const minAmount = filterMinAmount.trim() ? Number(filterMinAmount) : null;
         const maxAmount = filterMaxAmount.trim() ? Number(filterMaxAmount) : null;
         return {
@@ -152,6 +153,7 @@ export const Transactions: React.FC = () => {
         let failed = 0;
         const failedRows: ImportFailure[] = [];
 
+        // 串行导入：后端会联动账户余额，串行可避免并发写带来的状态抖动。
         for (let i = 0; i < rows.length; i += 1) {
             const row = rows[i];
             try {
@@ -177,6 +179,7 @@ export const Transactions: React.FC = () => {
         try {
             let exportRows: Transaction[] = [];
             let current = 1;
+            // 以固定 pageSize 循环拉取，保证导出覆盖当前筛选结果的全量数据。
             while (true) {
                 const chunk = await TransactionsApi.getPage(current, 200, activeFilters);
                 exportRows = exportRows.concat(chunk.items);
@@ -215,6 +218,7 @@ export const Transactions: React.FC = () => {
 
     const groupedTransactions = useMemo(() => {
         const groups: Record<string, Transaction[]> = {};
+        // 按“本地日期字符串”分组，确保列表与用户感知的自然日一致。
         pageData.items.forEach(tx => {
             const day = tx.date.split('T')[0];
             if (!groups[day]) groups[day] = [];
@@ -295,6 +299,7 @@ export const Transactions: React.FC = () => {
     const getAccountClass = (id: string) => {
         const acc = accounts.find(a => a.id === id);
         if (!acc) return 'bg-emerald-500/15 text-emerald-600';
+        // 账户标签颜色采用启发式规则，仅用于视觉识别，不参与业务逻辑。
         if (acc.name.includes('宝') || acc.name.includes('花')) return 'bg-amber-500/15 text-amber-600';
         if (acc.name.includes('信用')) return 'bg-amber-500/15 text-amber-600';
         return 'bg-emerald-500/15 text-emerald-600';

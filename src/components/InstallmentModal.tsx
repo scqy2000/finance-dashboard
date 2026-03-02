@@ -54,6 +54,7 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
     }, [periods, inputMode]);
 
     const toggleExpand = async (instId: string) => {
+        // 明细按需加载，避免初次打开弹窗就请求所有分期详情。
         if (expandedId === instId) { setExpandedId(null); return; }
         setExpandedId(instId);
         if (!periodDetails[instId] && onGetPeriods) {
@@ -92,6 +93,7 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
 
         let periodAmounts: number[] | undefined;
         if (inputMode === 'custom') {
+            // 自定义模式允许局部留空：留空项回退为当前估算月供。
             periodAmounts = customAmounts.map((v) => {
                 const parsed = parseFloat(v);
                 return isNaN(parsed) ? Math.round(monthlyPayment * 100) / 100 : parsed;

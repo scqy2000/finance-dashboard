@@ -61,6 +61,7 @@ export const TransactionsApi = {
         return invoke<Transaction[]>('get_transactions');
     },
     getPage(page: number, pageSize: number = 50, filters?: TransactionFilters): Promise<TransactionPage> {
+        // 统一在 API 边界做参数归一化：空值转 null，避免后端分支判断复杂化。
         return invoke<TransactionPage>('get_transactions_page', {
             page,
             pageSize,
@@ -160,6 +161,7 @@ export const InstallmentsApi = {
         return invoke<Installment[]>('get_installments_by_account', { accountId });
     },
     create(inst: Partial<Installment>, periodAmounts?: number[] | null, alreadyPaid?: number): Promise<string> {
+        // 前端兜底默认值，保证命令参数结构稳定，减少后端判空分支。
         const data = {
             id: '',
             account_id: inst.account_id || '',
@@ -175,6 +177,7 @@ export const InstallmentsApi = {
         };
         return invoke<string>('create_installment', {
             inst: data,
+            // 显式传 null，便于 Rust 侧区分“未传”与“空数组”。
             periodAmounts: periodAmounts || null,
             alreadyPaid: alreadyPaid || 0
         });

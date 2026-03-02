@@ -119,6 +119,7 @@ export const useStore = create<AppState>((set, get) => ({
     addTransaction: async (tx) => {
         try {
             await TransactionsApi.create(tx);
+            // 流水写入会影响账户余额，必须联动刷新两份数据。
             await get().loadTransactions();
             await get().loadAccounts(); // Balance changed
             return true;
@@ -131,6 +132,7 @@ export const useStore = create<AppState>((set, get) => ({
     updateTransaction: async (id, oldTx, newData) => {
         try {
             await TransactionsApi.update(id, oldTx, newData);
+            // 可能跨账户或改金额，刷新策略与新增保持一致。
             await get().loadTransactions();
             await get().loadAccounts(); // Balance may have changed
             return true;
@@ -143,6 +145,7 @@ export const useStore = create<AppState>((set, get) => ({
     deleteTransaction: async (tx) => {
         try {
             await TransactionsApi.delete(tx);
+            // 删除流水后账户余额会回滚，必须同步刷新。
             await get().loadTransactions();
             await get().loadAccounts(); // Balance changed
             return true;
@@ -221,6 +224,7 @@ export const useStore = create<AppState>((set, get) => ({
     initialized: false,
 
     init: async () => {
+        // 防止 StrictMode / 重复挂载触发重复初始化请求。
         if (get().initialized) return;
         await Promise.all([
             get().loadAccounts(),

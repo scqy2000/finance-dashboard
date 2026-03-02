@@ -632,6 +632,7 @@ pub fn update_transaction(
     let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
 
     let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    // 前端传入的是 Partial 更新，这里动态拼接 SQL 以支持“按需更新字段”。
     let mut sets = Vec::new();
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
     let mut arg_idx = 1;
@@ -668,6 +669,7 @@ pub fn update_transaction(
         arg_idx
     );
 
+    // rusqlite 需要 &dyn ToSql，先在 Box 中持有值再转引用，避免临时值生命周期问题。
     let mut dyn_args: Vec<&dyn rusqlite::ToSql> = Vec::new();
     for a in &args {
         dyn_args.push(&**a);
@@ -686,6 +688,9 @@ pub fn update_transaction(
         .and_then(|v| v.as_f64())
         .unwrap_or(old_tx.amount);
 
+    // 余额修正规则：
+    // 1) 同账户修改金额 -> 只补差额
+    // 2) 跨账户修改 -> 原账户回滚旧金额，新账户追加新金额
     if old_tx.account_id == new_acc_id {
         let diff = new_amt - old_tx.amount;
         if diff != 0.0 {
@@ -908,6 +913,8 @@ pub fn create_installment(
         }
     }
 
+    // monthly_payment 在“自定义每期金额”模式下，存储为“剩余待还平均值”，
+    // 便于列表视图快速展示下一阶段的月供水平。
     let stored_monthly_payment = if let Some(ref pa) = period_amounts {
         let start = already_paid as usize;
         let remaining = &pa[start..];
@@ -988,6 +995,7 @@ pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
 
+    // 只允许按期次顺序还款：始终取最早一条 pending。
     let next_period_id: Option<String> = tx_scope
         .query_row(
             "SELECT id FROM installment_periods WHERE installment_id = ?1 AND status = 'pending' ORDER BY period_number LIMIT 1",
@@ -1033,6 +1041,7 @@ pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
         .map(|d| format!("{} 第{}期还款", d, period_number))
         .unwrap_or_else(|| format!("分期第{}期还款", period_number));
 
+    // 记一期还款时，补写一条负向流水，确保账本和分期明细一致。
     tx_scope
         .execute(
             "INSERT INTO transactions (id, account_id, amount, category, description, date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -1054,6 +1063,7 @@ pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
         )
         .map_err(|e| e.to_string())?;
 
+    // 重新计算剩余期数的平均月供，避免最后几期与初始月供不一致。
     let (remaining_sum, remaining_count): (Option<f64>, i64) = tx_scope
         .query_row(
             "SELECT SUM(amount), COUNT(*) FROM installment_periods WHERE installment_id = ?1 AND status = 'pending'",
