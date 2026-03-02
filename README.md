@@ -30,6 +30,7 @@
 - [项目结构](#项目结构)
 - [开发与贡献](#开发与贡献)
 - [发布说明](#发布说明)
+- [版本规则](#版本规则)
 - [FAQ](#faq)
 - [Roadmap](#roadmap)
 
@@ -296,6 +297,17 @@ cargo check --manifest-path src-tauri/Cargo.toml
 3. 本地打包：`npm run build`
 4. 打 Git Tag 并推送
 5. 在 GitHub Release 上传安装包
+
+详细规则见 `docs/VERSIONING.md`。
+
+---
+
+## 版本规则
+
+- 版本策略：`SemVer`（`MAJOR.MINOR.PATCH`）
+- 当前阶段：`0.x`（`MINOR` 可包含潜在破坏性调整）
+- 下个推荐版本：`0.2.0`
+- 规则文档：`docs/VERSIONING.md`
 
 ---
 
