@@ -62,19 +62,25 @@
 
 ## 项目预览
 
-当前仓库默认未附真实截图。你可以把截图放到 `docs/images/` 目录，推荐文件名如下：
+### 财务概览
 
-- `docs/images/dashboard.png`
-- `docs/images/transactions.png`
-- `docs/images/accounts.png`
-- `docs/images/analytics.png`
-- `docs/images/settings.png`
-
-建议补充后在 README 中按下列方式展示：
-
-```md
 ![Dashboard](docs/images/dashboard.png)
-```
+
+### 收支明细
+
+![Transactions](docs/images/transactions.png)
+
+### 资产与负债
+
+![Accounts](docs/images/accounts.png)
+
+### AI 财务诊断
+
+![Analytics](docs/images/analytics.png)
+
+### 系统设置
+
+![Settings](docs/images/settings.png)
 
 ---
 
