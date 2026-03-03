@@ -201,7 +201,7 @@ export const Dashboard: FC = () => {
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <span className="text-[13px] text-[var(--text-secondary)] font-medium">{periodLabel}收入 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums whitespace-nowrap">{formatMoney(summary.period_income)}</span>
+                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.period_income)}</span>
                     </div>
                 </div>
                 <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
@@ -210,7 +210,7 @@ export const Dashboard: FC = () => {
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <span className="text-[13px] text-[var(--text-secondary)] font-medium">{periodLabel}支出 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums whitespace-nowrap">{formatMoney(summary.period_expense)}</span>
+                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.period_expense)}</span>
                     </div>
                 </div>
                 <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
@@ -219,7 +219,7 @@ export const Dashboard: FC = () => {
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <span className="text-[13px] text-[var(--text-secondary)] font-medium">待还负债 <small className="font-normal text-[var(--text-tertiary)]">(负债账户)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums whitespace-nowrap">{formatMoney(summary.total_debt)}</span>
+                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.total_debt)}</span>
                     </div>
                 </div>
                 <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg border border-[var(--color-primary-light)] bg-gradient-to-b from-[var(--bg-surface)] to-white/95 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:from-[var(--color-primary)] hover:before:to-[#818cf8]">
@@ -228,7 +228,7 @@ export const Dashboard: FC = () => {
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <span className="text-[13px] text-[var(--text-secondary)] font-medium">资产净值</span>
-                        <span className="text-gradient text-[22px] font-bold tracking-tight tabular-nums whitespace-nowrap">{formatMoney(summary.net_worth)}</span>
+                        <span className="text-gradient text-[22px] font-bold tracking-tight tabular-nums">{formatMoney(summary.net_worth)}</span>
                     </div>
                 </div>
             </div>
