@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Download, Upload, Settings2, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
+import { useState, useMemo, useEffect, useCallback, type FC } from 'react';
+import { Download, Upload, Settings2, ChevronLeft, ChevronRight, RotateCcw, CalendarDays } from 'lucide-react';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { useAccounts } from '../hooks/useAccounts';
@@ -46,7 +46,7 @@ const EMPTY_PAGE: TransactionPage = {
     has_more: false,
 };
 
-export const Transactions: React.FC = () => {
+export const Transactions: FC = () => {
     const { toast, confirm } = useFeedback();
     const { accounts, refreshAccounts } = useAccounts();
     const { categories, refreshCategories, addCategory, updateCategory, deleteCategory } = useCategories();
@@ -63,6 +63,7 @@ export const Transactions: React.FC = () => {
     const [filterType, setFilterType] = useState<'all' | 'expense' | 'income'>('all');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
+    const [showDateFilterPanel, setShowDateFilterPanel] = useState(false);
     const [filterMinAmount, setFilterMinAmount] = useState('');
     const [filterMaxAmount, setFilterMaxAmount] = useState('');
 
@@ -105,6 +106,13 @@ export const Transactions: React.FC = () => {
             filterMaxAmount.trim()
         );
     }, [searchQuery, filterAccountId, filterCategory, filterType, filterDateFrom, filterDateTo, filterMinAmount, filterMaxAmount]);
+
+    const dateFilterLabel = useMemo(() => {
+        if (filterDateFrom && filterDateTo) return `${filterDateFrom} ~ ${filterDateTo}`;
+        if (filterDateFrom) return `从 ${filterDateFrom}`;
+        if (filterDateTo) return `至 ${filterDateTo}`;
+        return '日期筛选';
+    }, [filterDateFrom, filterDateTo]);
 
     const resetFilters = () => {
         setSearchInput('');
@@ -322,13 +330,13 @@ export const Transactions: React.FC = () => {
                     <p className="text-[var(--text-tertiary)] text-sm">按分页加载流水，当前共 {pageData.total} 笔记录。</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={() => setShowCategoryManager(true)}>
+                    <button type="button" className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={() => setShowCategoryManager(true)}>
                         <Settings2 size={16} /> 分类管理
                     </button>
-                    <button className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={() => setShowCsvImport(true)}>
+                    <button type="button" className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={() => setShowCsvImport(true)}>
                         <Download size={16} /> 导入 CSV
                     </button>
-                    <button className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={handleExportCsv}>
+                    <button type="button" className="btn-secondary glass-panel motion-hover-lift flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:-translate-y-px hover:shadow-sm cursor-pointer" onClick={handleExportCsv}>
                         <Upload size={16} /> 导出 CSV
                     </button>
                 </div>
@@ -362,17 +370,34 @@ export const Transactions: React.FC = () => {
                                 <option value="income">仅收入</option>
                             </select>
 
-                            <button className="inline-flex items-center justify-center gap-1 py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--bg-surface-hover)] disabled:opacity-50" disabled={!hasActiveFilters} onClick={resetFilters}>
+                            <button type="button" className="inline-flex items-center justify-center gap-1 py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--bg-surface-hover)] disabled:opacity-50" disabled={!hasActiveFilters} onClick={resetFilters}>
                                 <RotateCcw size={12} /> 重置筛选
                             </button>
                         </div>
 
                         <div className="grid grid-cols-4 gap-2">
-                            <input type="date" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="开始日期" />
-                            <input type="date" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="结束日期" />
+                            <button
+                                type="button"
+                                className={`col-span-2 inline-flex items-center justify-between gap-2 py-2 px-2.5 rounded-[var(--radius-sm)] border text-xs bg-white/70 cursor-pointer transition-[background-color,border-color,color] ${showDateFilterPanel ? 'border-[var(--color-primary)] text-[var(--text-primary)] bg-white' : 'border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)]'}`}
+                                onClick={() => setShowDateFilterPanel(prev => !prev)}
+                                title="打开日期筛选"
+                            >
+                                <span className="inline-flex items-center gap-1.5 min-w-0">
+                                    <CalendarDays size={13} />
+                                    <span className="truncate">{dateFilterLabel}</span>
+                                </span>
+                                <span className="text-[11px] text-[var(--text-tertiary)]">{showDateFilterPanel ? '收起' : '展开'}</span>
+                            </button>
                             <input type="number" step="0.01" min="0" placeholder="最小金额" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterMinAmount} onChange={e => setFilterMinAmount(e.target.value)} />
                             <input type="number" step="0.01" min="0" placeholder="最大金额" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterMaxAmount} onChange={e => setFilterMaxAmount(e.target.value)} />
                         </div>
+
+                        {showDateFilterPanel && (
+                            <div className="grid grid-cols-2 gap-2 p-2 rounded-[var(--radius-sm)] border border-[var(--border-light)] bg-[var(--bg-surface)]">
+                                <input type="date" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} title="开始日期" />
+                                <input type="date" className="py-2 px-2.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] text-xs bg-white/70 outline-none" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} title="结束日期" />
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex py-3 px-6 text-xs font-semibold text-[var(--text-tertiary)] uppercase tracking-wider border-b border-[var(--border-light)]">
@@ -397,12 +422,12 @@ export const Transactions: React.FC = () => {
                                     <h3 className="text-[13px] font-semibold text-[var(--text-tertiary)] mb-3 pl-2">{day}</h3>
                                     {groupedTransactions[day].map(tx => (
                                         <div className="group flex items-center py-3 px-2 rounded-[var(--radius-md)] transition-[transform,background-color,border-color] duration-150 border-l-[3px] border-l-transparent hover:bg-[var(--bg-surface-hover)] hover:border-l-[var(--color-primary)] hover:translate-x-0.5" key={tx.id}>
-                                            <div className="flex-[2] flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-[var(--bg-app)]">
+                                            <div className="flex-[2] min-w-0 flex items-center gap-4">
+                                                <div className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-xl bg-[var(--bg-app)]">
                                                     {getCategoryEmoji(tx.category, tx.amount)}
                                                 </div>
-                                                <div className="flex flex-col gap-0.5">
-                                                    <span className="text-sm font-semibold text-[var(--text-primary)]">{tx.description || tx.category}</span>
+                                                <div className="flex min-w-0 flex-col gap-0.5">
+                                                    <span className="text-sm font-semibold text-[var(--text-primary)] truncate">{tx.description || tx.category}</span>
                                                     <span className="text-xs text-[var(--text-tertiary)]">{tx.category} · {formatTimeZh(tx.date)}</span>
                                                 </div>
                                             </div>
@@ -428,6 +453,7 @@ export const Transactions: React.FC = () => {
                         </span>
                         <div className="flex gap-2">
                             <button
+                                type="button"
                                 className="btn-secondary flex items-center gap-1 py-1.5 px-3 border border-[var(--border-light)] rounded-[var(--radius-md)] text-[12px] bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={loading || pageData.page <= 1}
                                 onClick={() => setPage(prev => Math.max(1, prev - 1))}
@@ -435,6 +461,7 @@ export const Transactions: React.FC = () => {
                                 <ChevronLeft size={14} /> 上一页
                             </button>
                             <button
+                                type="button"
                                 className="btn-secondary flex items-center gap-1 py-1.5 px-3 border border-[var(--border-light)] rounded-[var(--radius-md)] text-[12px] bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                 disabled={loading || !pageData.has_more}
                                 onClick={() => setPage(prev => prev + 1)}
@@ -460,15 +487,15 @@ export const Transactions: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
-                            <label className="text-[13px] font-medium text-[var(--text-secondary)]">金额 (¥)</label>
-                            <input type="number" step="0.01" placeholder="0.00"
+                            <label htmlFor="tx-amount" className="text-[13px] font-medium text-[var(--text-secondary)]">金额 (¥)</label>
+                            <input id="tx-amount" type="number" step="0.01" placeholder="0.00"
                                 className="w-full py-3 px-4 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-2xl font-semibold outline-none transition-[border-color,background-color,box-shadow] duration-150 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
                                 value={amount} onChange={e => setAmount(e.target.value)} />
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
-                            <label className="text-[13px] font-medium text-[var(--text-secondary)]">分类</label>
-                            <select className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
+                            <label htmlFor="tx-category" className="text-[13px] font-medium text-[var(--text-secondary)]">分类</label>
+                            <select id="tx-category" className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
                                 value={category} onChange={e => setCategory(e.target.value)}>
                                 <option value="">选择分类...</option>
                                 {currentCategories.map(c => <option key={c.id} value={c.name}>{c.emoji} {c.name}</option>)}
@@ -476,15 +503,15 @@ export const Transactions: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
-                            <label className="text-[13px] font-medium text-[var(--text-secondary)]">描述 (选填)</label>
-                            <input type="text" placeholder="款项说明..."
+                            <label htmlFor="tx-description" className="text-[13px] font-medium text-[var(--text-secondary)]">描述 (选填)</label>
+                            <input id="tx-description" type="text" placeholder="款项说明..."
                                 className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
                                 value={description} onChange={e => setDescription(e.target.value)} />
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
-                            <label className="text-[13px] font-medium text-[var(--text-secondary)]">关联账户</label>
-                            <select className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
+                            <label htmlFor="tx-account" className="text-[13px] font-medium text-[var(--text-secondary)]">关联账户</label>
+                            <select id="tx-account" className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
                                 value={accountId} onChange={e => setAccountId(e.target.value)}>
                                 <option value="" disabled>选择关联账户</option>
                                 {getAssetAccounts().length > 0 && <optgroup label="资产">{getAssetAccounts().map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</optgroup>}
@@ -493,8 +520,8 @@ export const Transactions: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col gap-1.5 mb-4">
-                            <label className="text-[13px] font-medium text-[var(--text-secondary)]">日期与时间</label>
-                            <input type="datetime-local"
+                            <label htmlFor="tx-date" className="text-[13px] font-medium text-[var(--text-secondary)]">日期与时间</label>
+                            <input id="tx-date" type="datetime-local"
                                 className="w-full py-2.5 px-3.5 rounded-[var(--radius-md)] border border-[var(--border-strong)] text-sm outline-none transition-[border-color,background-color,box-shadow] duration-150 bg-white/70 focus:border-[var(--color-primary)] focus:bg-white focus:shadow-[0_0_0_3px_var(--color-primary-light),var(--shadow-sm)]"
                                 value={date} onChange={e => setDate(e.target.value)} />
                         </div>
