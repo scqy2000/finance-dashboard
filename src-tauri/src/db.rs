@@ -3,7 +3,7 @@ use std::fs;
 use tauri::{AppHandle, Manager};
 
 // 当前 schema 版本号；每次新增迁移时递增。
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 // Database structure mapping to JSON
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -151,6 +151,12 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             FOREIGN KEY(installment_id) REFERENCES installments(id) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date DESC);
         CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account_id, date DESC);
         CREATE INDEX IF NOT EXISTS idx_installments_status ON installments(status);
@@ -197,8 +203,13 @@ fn apply_migrations(conn: &Connection) -> Result<()> {
 
     if current_version < 1 {
         migrate_to_v1(conn)?;
-        conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
     }
+
+    if current_version < 2 {
+        migrate_to_v2(conn)?;
+    }
+
+    conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
 
     Ok(())
 }
@@ -236,6 +247,20 @@ fn migrate_to_v1(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_transactions_account_date ON transactions(account_id, date DESC);
         CREATE INDEX IF NOT EXISTS idx_installments_status ON installments(status);
         CREATE INDEX IF NOT EXISTS idx_installment_periods_inst_status ON installment_periods(installment_id, status, period_number);
+        "#,
+    )?;
+
+    Ok(())
+}
+
+fn migrate_to_v2(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         "#,
     )?;
 

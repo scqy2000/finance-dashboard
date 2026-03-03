@@ -1,5 +1,4 @@
 use crate::db::{Account, Category, Installment, InstallmentPeriod, Transaction};
-use keyring::Entry;
 use rusqlite::params;
 use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
@@ -7,9 +6,49 @@ use tauri::Manager;
 use tauri::State;
 
 pub struct DbState(pub Mutex<Connection>);
+const API_KEY_SETTING_KEY: &str = "finance_ai_api_key";
+const API_KEY_CIPHER_KEY: &[u8] = b"finance-dashboard-local-key";
 
-const API_KEYRING_SERVICE: &str = "finance-dashboard";
-const API_KEYRING_ACCOUNT: &str = "finance-ai-api-key";
+fn xor_cipher(input: &[u8]) -> Vec<u8> {
+    input
+        .iter()
+        .enumerate()
+        .map(|(idx, byte)| byte ^ API_KEY_CIPHER_KEY[idx % API_KEY_CIPHER_KEY.len()])
+        .collect()
+}
+
+fn encode_hex(input: &[u8]) -> String {
+    let mut out = String::with_capacity(input.len() * 2);
+    for b in input {
+        out.push_str(&format!("{b:02x}"));
+    }
+    out
+}
+
+fn decode_hex(input: &str) -> Result<Vec<u8>, String> {
+    if input.len() % 2 != 0 {
+        return Err("加密数据长度非法".to_string());
+    }
+
+    let mut out = Vec::with_capacity(input.len() / 2);
+    for chunk in input.as_bytes().chunks(2) {
+        let hex = std::str::from_utf8(chunk).map_err(|e| e.to_string())?;
+        let value = u8::from_str_radix(hex, 16).map_err(|e| e.to_string())?;
+        out.push(value);
+    }
+    Ok(out)
+}
+
+fn encrypt_api_key(plain: &str) -> String {
+    let cipher_bytes = xor_cipher(plain.as_bytes());
+    encode_hex(&cipher_bytes)
+}
+
+fn decrypt_api_key(cipher_hex: &str) -> Result<String, String> {
+    let cipher_bytes = decode_hex(cipher_hex)?;
+    let plain_bytes = xor_cipher(&cipher_bytes);
+    String::from_utf8(plain_bytes).map_err(|e| e.to_string())
+}
 
 #[derive(serde::Serialize)]
 pub struct TransactionPageResult {
@@ -1213,42 +1252,58 @@ pub fn cancel_installment(id: String, state: State<DbState>) -> Result<(), Strin
     Ok(())
 }
 
-fn api_key_entry() -> Result<Entry, String> {
-    Entry::new(API_KEYRING_SERVICE, API_KEYRING_ACCOUNT).map_err(|e| e.to_string())
-}
-
 #[tauri::command]
-pub fn load_api_key() -> Result<Option<String>, String> {
-    let entry = api_key_entry()?;
-    match entry.get_password() {
-        Ok(value) => Ok(Some(value)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(err) => Err(err.to_string()),
+pub fn load_api_key(state: State<DbState>) -> Result<Option<String>, String> {
+    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let encrypted: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_settings WHERE key = ?1",
+            params![API_KEY_SETTING_KEY],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    match encrypted {
+        Some(cipher_hex) => decrypt_api_key(&cipher_hex).map(Some),
+        None => Ok(None),
     }
 }
 
 #[tauri::command]
-pub fn save_api_key(api_key: String) -> Result<(), String> {
-    let entry = api_key_entry()?;
+pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     let trimmed = api_key.trim();
 
     if trimmed.is_empty() {
-        return match entry.delete_credential() {
-            Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
-            Err(err) => Err(err.to_string()),
-        };
+        conn.execute(
+            "DELETE FROM app_settings WHERE key = ?1",
+            params![API_KEY_SETTING_KEY],
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(());
     }
 
-    entry.set_password(trimmed).map_err(|e| e.to_string())
+    let encrypted = encrypt_api_key(trimmed);
+    conn.execute(
+        "INSERT INTO app_settings (key, value, updated_at) VALUES (?1, ?2, CURRENT_TIMESTAMP)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP",
+        params![API_KEY_SETTING_KEY, encrypted],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 #[tauri::command]
-pub fn clear_api_key() -> Result<(), String> {
-    let entry = api_key_entry()?;
-    match entry.delete_credential() {
-        Ok(_) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(err) => Err(err.to_string()),
-    }
+pub fn clear_api_key(state: State<DbState>) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    conn.execute(
+        "DELETE FROM app_settings WHERE key = ?1",
+        params![API_KEY_SETTING_KEY],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 // ==========================================
