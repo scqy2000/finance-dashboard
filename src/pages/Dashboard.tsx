@@ -4,6 +4,7 @@ import { FinanceApi } from '../api/db';
 import type { CategoryTrendSnapshot, FinanceSnapshot } from '../api/db';
 import { dateToLocalIso, nowLocalIso } from '../utils/datetime';
 import { getErrorMessage } from '../utils/errors';
+import { formatMoneyCny } from '../utils/formatters';
 
 type TimeRange = 'week' | 'month' | 'quarter' | 'year';
 const TIME_RANGE_LABELS: Record<TimeRange, string> = { week: '本周', month: '本月', quarter: '本季', year: '全年' };
@@ -85,7 +86,11 @@ export const Dashboard: FC = () => {
     const periodLabel = TIME_RANGE_LABELS[timeRange];
 
     const formatMoney = (amount: number) => {
-        return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY' }).format(amount);
+        return formatMoneyCny(amount);
+    };
+
+    const formatMoneyCompact = (amount: number) => {
+        return new Intl.NumberFormat('zh-CN', { style: 'currency', currency: 'CNY', maximumFractionDigits: 0 }).format(amount);
     };
 
     const formatDate = (isoDate: string) => {
@@ -194,41 +199,41 @@ export const Dashboard: FC = () => {
                 </div>
             </header>
 
-            <div className="stats-grid grid grid-cols-4 gap-5">
-                <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
-                    <div className="w-12 h-12 shrink-0 rounded-[14px] flex items-center justify-center bg-[var(--color-success-bg)] text-[var(--color-success)]">
-                        <ArrowUpRight size={20} />
+            <div className="stats-grid grid grid-cols-4 gap-4">
+                <div className="glass-panel motion-hover-lift p-4 flex gap-3 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
+                    <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-[var(--color-success-bg)] text-[var(--color-success)]">
+                        <ArrowUpRight size={16} />
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <span className="text-[13px] text-[var(--text-secondary)] font-medium">{periodLabel}收入 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.period_income)}</span>
-                    </div>
-                </div>
-                <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
-                    <div className="w-12 h-12 shrink-0 rounded-[14px] flex items-center justify-center bg-[var(--color-danger-bg)] text-[var(--color-danger)]">
-                        <ArrowDownRight size={20} />
-                    </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <span className="text-[13px] text-[var(--text-secondary)] font-medium">{periodLabel}支出 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.period_expense)}</span>
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">{periodLabel}收入 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
+                        <span className="text-base font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoneyCompact(summary.period_income)}</span>
                     </div>
                 </div>
-                <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
-                    <div className="w-12 h-12 shrink-0 rounded-[14px] flex items-center justify-center bg-amber-500/10 text-[var(--color-warning)]">
-                        <CreditCard size={20} />
+                <div className="glass-panel motion-hover-lift p-4 flex gap-3 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
+                    <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-[var(--color-danger-bg)] text-[var(--color-danger)]">
+                        <ArrowDownRight size={16} />
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <span className="text-[13px] text-[var(--text-secondary)] font-medium">待还负债 <small className="font-normal text-[var(--text-tertiary)]">(负债账户)</small></span>
-                        <span className="text-[22px] font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoney(summary.total_debt)}</span>
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">{periodLabel}支出 <small className="font-normal text-[var(--text-tertiary)]">(聚合统计)</small></span>
+                        <span className="text-base font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoneyCompact(summary.period_expense)}</span>
                     </div>
                 </div>
-                <div className="glass-panel motion-hover-lift p-5 flex gap-4 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg border border-[var(--color-primary-light)] bg-gradient-to-b from-[var(--bg-surface)] to-white/95 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:from-[var(--color-primary)] hover:before:to-[#818cf8]">
-                    <div className="w-12 h-12 shrink-0 rounded-[14px] flex items-center justify-center bg-gradient-to-br from-[var(--color-primary)] to-[#818cf8] text-white">
-                        <Wallet size={20} />
+                <div className="glass-panel motion-hover-lift p-4 flex gap-3 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg group before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:via-[#818cf8] hover:before:from-[var(--color-primary)]">
+                    <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-amber-500/10 text-[var(--color-warning)]">
+                        <CreditCard size={16} />
                     </div>
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <span className="text-[13px] text-[var(--text-secondary)] font-medium">资产净值</span>
-                        <span className="text-gradient text-[22px] font-bold tracking-tight tabular-nums">{formatMoney(summary.net_worth)}</span>
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">待还负债 <small className="font-normal text-[var(--text-tertiary)]">(负债账户)</small></span>
+                        <span className="text-base font-bold text-[var(--text-primary)] tracking-tight tabular-nums">{formatMoneyCompact(summary.total_debt)}</span>
+                    </div>
+                </div>
+                <div className="glass-panel motion-hover-lift p-4 flex gap-3 items-center relative overflow-hidden hover:-translate-y-[3px] hover:shadow-lg border border-[var(--color-primary-light)] bg-gradient-to-b from-[var(--bg-surface)] to-white/95 before:content-[''] before:absolute before:top-0 before:left-0 before:right-0 before:h-[3px] before:bg-gradient-to-r before:from-transparent before:via-[var(--border-light)] before:to-transparent before:transition-[opacity,transform] before:duration-300 hover:before:from-[var(--color-primary)] hover:before:to-[#818cf8]">
+                    <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-gradient-to-br from-[var(--color-primary)] to-[#818cf8] text-white">
+                        <Wallet size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                        <span className="text-xs text-[var(--text-secondary)] font-medium">资产净值</span>
+                        <span className="text-gradient text-base font-bold tracking-tight tabular-nums">{formatMoneyCompact(summary.net_worth)}</span>
                     </div>
                 </div>
             </div>

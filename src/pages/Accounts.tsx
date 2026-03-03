@@ -127,6 +127,7 @@ export const Accounts: React.FC = () => {
     const { accounts, loading, refreshAccounts, addAccount, updateAccount, deleteAccount } = useAccounts();
     const { installments, addInstallment, payPeriod, cancelInstallment, getPeriods } = useInstallments();
     const refreshAll = useStore(s => s.refreshAll);
+    const [devModeEnabled, setDevModeEnabled] = useState(() => localStorage.getItem('finance_dev_mode') === 'true');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<'asset' | 'liability'>('asset');
     const [installmentAccount, setInstallmentAccount] = useState<Account | null>(null);
@@ -161,6 +162,21 @@ export const Accounts: React.FC = () => {
 
     const [menuCardId, setMenuCardId] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const syncDevMode = () => {
+            setDevModeEnabled(localStorage.getItem('finance_dev_mode') === 'true');
+        };
+
+        window.addEventListener('storage', syncDevMode);
+        window.addEventListener('dev-mode-updated', syncDevMode);
+
+        return () => {
+            window.removeEventListener('storage', syncDevMode);
+            window.removeEventListener('dev-mode-updated', syncDevMode);
+        };
+    }, []);
+
     useEffect(() => {
         const handler = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuCardId(null); };
         if (menuCardId) document.addEventListener('mousedown', handler);
@@ -289,7 +305,9 @@ export const Accounts: React.FC = () => {
                     <p className="text-[var(--text-tertiary)] text-sm">追踪您的资产账户及即将到期的分期账单。</p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="btn-secondary glass-panel flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] cursor-pointer" onClick={handleSync}><RefreshCw size={16} /> 注入测试数据</button>
+                    {devModeEnabled && (
+                        <button className="btn-secondary glass-panel flex items-center gap-1.5 py-2 px-4 border border-[var(--border-light)] text-[13px] font-medium text-[var(--text-secondary)] rounded-[var(--radius-md)] cursor-pointer" onClick={handleSync}><RefreshCw size={16} /> 注入测试数据</button>
+                    )}
                     <button className="btn-primary flex items-center gap-1.5 py-2 px-4 border-none text-[13px] font-medium bg-[var(--color-primary)] text-white rounded-[var(--radius-md)] shadow-[0_4px_10px_rgba(79,70,229,0.3)] cursor-pointer" onClick={() => handleOpenModal('asset')}><Plus size={16} /> 添加账户</button>
                 </div>
             </header>

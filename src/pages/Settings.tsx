@@ -15,8 +15,15 @@ export const Settings: React.FC = () => {
     const [themeColor, setThemeColor] = useState('#4f46e5');
     const [bgStyle, setBgStyle] = useState('solid');
     const [saved, setSaved] = useState(false);
+    const [devMode, setDevMode] = useState(() => localStorage.getItem('finance_dev_mode') === 'true');
+    const [versionClicks, setVersionClicks] = useState(0);
 
     const [appInfo, setAppInfo] = useState<any>(null);
+
+    const notifyDevModeUpdated = () => {
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('dev-mode-updated'));
+    };
 
     useEffect(() => {
         let mounted = true;
@@ -205,10 +212,44 @@ export const Settings: React.FC = () => {
                 <section className={`${sectionCls} opacity-70`}>
                     <h2 className="text-base font-semibold">关于</h2>
                     <p className="text-sm text-[var(--text-secondary)]">
-                        {appName} v{appInfo?.version || '0.1.0'}
+                        {appName}{' '}
+                        <span
+                            className="cursor-default select-none"
+                            onClick={() => {
+                                if (devMode) return;
+                                const next = versionClicks + 1;
+                                setVersionClicks(next);
+                                if (next >= 5) {
+                                    localStorage.setItem('finance_dev_mode', 'true');
+                                    setDevMode(true);
+                                    setVersionClicks(0);
+                                    notifyDevModeUpdated();
+                                    toast('开发者模式已开启', 'success');
+                                } else if (next >= 3) {
+                                    toast(`再点击 ${5 - next} 次即可开启开发者模式`, 'info');
+                                }
+                            }}
+                        >
+                            v{appInfo?.version || '0.1.0'}
+                        </span>
                         <br /><br />
                         以 Tauri v2 + React + Rust + SQLite 构建的纯本地数据桌面记账软件。
                     </p>
+                    {devMode && (
+                        <button
+                            type="button"
+                            className="mt-3 py-1.5 px-4 rounded-[var(--radius-md)] text-xs font-semibold border border-amber-500/30 bg-amber-500/10 text-amber-600 cursor-pointer hover:bg-amber-500/20 transition-colors"
+                            onClick={() => {
+                                localStorage.removeItem('finance_dev_mode');
+                                setDevMode(false);
+                                setVersionClicks(0);
+                                notifyDevModeUpdated();
+                                toast('开发者模式已关闭', 'info');
+                            }}
+                        >
+                            🛠 Dev Mode: ON
+                        </button>
+                    )}
                 </section>
             </div>
         </div>
