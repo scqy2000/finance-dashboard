@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowUpRight, ArrowDownRight, Wallet, CreditCard, TrendingUp } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CreditCard, TrendingUp, Wallet } from 'lucide-react';
+import { type FC, useEffect, useState } from 'react';
 import { FinanceApi } from '../api/db';
-import type { FinanceSnapshot } from '../api/db';
+import type { CategoryTrendSnapshot, FinanceSnapshot } from '../api/db';
 import { dateToLocalIso, nowLocalIso } from '../utils/datetime';
 import { getErrorMessage } from '../utils/errors';
 
@@ -42,12 +42,18 @@ const EMPTY_SUMMARY: FinanceSnapshot = {
     recent_transactions: [],
 };
 
-export const Dashboard: React.FC = () => {
+const EMPTY_CATEGORY_TREND: CategoryTrendSnapshot = {
+    expense: [],
+    income: [],
+};
+
+export const Dashboard: FC = () => {
     const [timeRange, setTimeRange] = useState<TimeRange>('month');
     const [showRangeMenu, setShowRangeMenu] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [summary, setSummary] = useState<FinanceSnapshot>(EMPTY_SUMMARY);
+    const [categoryTrend, setCategoryTrend] = useState<CategoryTrendSnapshot>(EMPTY_CATEGORY_TREND);
 
     useEffect(() => {
         let cancelled = false;
@@ -55,8 +61,16 @@ export const Dashboard: React.FC = () => {
             setLoading(true);
             setError(null);
             try {
-                const data = await FinanceApi.getSnapshot(getTimeRangeStart(timeRange), nowLocalIso(), 5);
-                if (!cancelled) setSummary(data);
+                const periodStart = getTimeRangeStart(timeRange);
+                const periodEnd = nowLocalIso();
+                const [snapshot, trend] = await Promise.all([
+                    FinanceApi.getSnapshot(periodStart, periodEnd, 5),
+                    FinanceApi.getCategoryTrend(periodStart, periodEnd, 4),
+                ]);
+                if (!cancelled) {
+                    setSummary(snapshot);
+                    setCategoryTrend(trend);
+                }
             } catch (e: unknown) {
                 if (!cancelled) setError(getErrorMessage(e, '加载财务概览失败'));
             } finally {
@@ -97,6 +111,42 @@ export const Dashboard: React.FC = () => {
         return emojiMap[cat] || (amt > 0 ? '💼' : '💰');
     };
 
+    const renderTrendList = (title: string, items: CategoryTrendSnapshot['expense'], colorClass: string) => {
+        if (items.length === 0) {
+            return (
+                <div className="glass-panel p-4">
+                    <h3 className="text-sm font-semibold mb-3">{title}</h3>
+                    <p className="text-[13px] text-[var(--text-tertiary)]">当前时间范围内暂无数据</p>
+                </div>
+            );
+        }
+
+        const maxValue = Math.max(...items.map(item => item.total), 0);
+
+        return (
+            <div className="glass-panel p-4">
+                <h3 className="text-sm font-semibold mb-3">{title}</h3>
+                <div className="flex flex-col gap-3">
+                    {items.map(item => {
+                        const width = maxValue > 0 ? Math.max((item.total / maxValue) * 100, 8) : 0;
+                        return (
+                            <div key={`${title}-${item.category}`}>
+                                <div className="flex items-center justify-between mb-1.5 text-[13px]">
+                                    <span className="text-[var(--text-secondary)] truncate pr-2">{item.emoji} {item.category}</span>
+                                    <span className="font-semibold text-[var(--text-primary)] tabular-nums">{formatMoney(item.total)}</span>
+                                </div>
+                                <div className="h-2 rounded-full bg-[var(--bg-app)] overflow-hidden">
+                                    <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${width}%` }} />
+                                </div>
+                                <div className="mt-1 text-[11px] text-[var(--text-tertiary)]">{item.tx_count} 笔</div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <div className="flex flex-col gap-6 items-center justify-center h-full">
@@ -122,6 +172,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="relative">
                     <button
+                        type="button"
                         className="glass-panel px-4 py-2 rounded-full text-[13px] font-semibold text-[var(--text-secondary)] cursor-pointer hover:bg-[var(--bg-surface-hover)] transition-[background-color,color,box-shadow,transform] duration-150 border-none"
                         onClick={() => setShowRangeMenu(!showRangeMenu)}
                     >
@@ -131,6 +182,7 @@ export const Dashboard: React.FC = () => {
                         <div className="motion-dropdown-fade absolute right-0 top-full mt-1 bg-[var(--bg-surface-solid)] border border-[var(--border-light)] rounded-[var(--radius-md)] shadow-lg z-50 min-w-[100px] p-1 backdrop-blur-[20px]">
                             {(Object.keys(TIME_RANGE_LABELS) as TimeRange[]).map(r => (
                                 <button key={r}
+                                    type="button"
                                     className={`w-full py-2 px-3 border-none text-[13px] text-left cursor-pointer rounded-[var(--radius-sm)] transition-colors duration-150 ${timeRange === r ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold' : 'bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)]'}`}
                                     onClick={() => { setTimeRange(r); setShowRangeMenu(false); }}
                                 >
@@ -227,6 +279,11 @@ export const Dashboard: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            <section className="grid grid-cols-2 gap-6">
+                {renderTrendList(`${periodLabel}支出分类趋势`, categoryTrend.expense, 'bg-[var(--color-danger)]')}
+                {renderTrendList(`${periodLabel}收入分类趋势`, categoryTrend.income, 'bg-[var(--color-success)]')}
+            </section>
         </div>
     );
 };

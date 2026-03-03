@@ -36,6 +36,7 @@ pub fn run() {
             commands::update_transaction,
             commands::delete_transaction,
             commands::get_finance_snapshot,
+            commands::get_category_trend,
             commands::get_categories,
             commands::create_category,
             commands::update_category,

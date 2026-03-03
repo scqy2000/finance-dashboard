@@ -61,6 +61,19 @@ export interface FinanceSnapshot {
     recent_transactions: Transaction[];
 }
 
+export interface CategoryTrendItem {
+    category: string;
+    emoji: string;
+    type: 'expense' | 'income';
+    total: number;
+    tx_count: number;
+}
+
+export interface CategoryTrendSnapshot {
+    expense: CategoryTrendItem[];
+    income: CategoryTrendItem[];
+}
+
 export interface Category {
     id: string;
     name: string;

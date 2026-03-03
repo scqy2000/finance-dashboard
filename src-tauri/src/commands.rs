@@ -35,6 +35,21 @@ pub struct FinanceSnapshot {
     pub recent_transactions: Vec<Transaction>,
 }
 
+#[derive(serde::Serialize)]
+pub struct CategoryTrendItem {
+    pub category: String,
+    pub emoji: String,
+    pub r#type: String,
+    pub total: f64,
+    pub tx_count: i64,
+}
+
+#[derive(serde::Serialize)]
+pub struct CategoryTrendSnapshot {
+    pub expense: Vec<CategoryTrendItem>,
+    pub income: Vec<CategoryTrendItem>,
+}
+
 // ==========================================
 // Accounts
 // ==========================================
@@ -587,6 +602,89 @@ pub fn get_finance_snapshot(
         total_assets,
         total_debt,
         transaction_count,
+    })
+}
+
+#[tauri::command]
+pub fn get_category_trend(
+    period_start: Option<String>,
+    period_end: Option<String>,
+    limit: Option<i64>,
+    state: State<DbState>,
+) -> Result<CategoryTrendSnapshot, String> {
+    let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let safe_limit = limit.unwrap_or(6).clamp(1, 20);
+
+    let mut expense_stmt = conn
+        .prepare(
+            "SELECT
+                t.category,
+                COALESCE(MAX(c.emoji), '💰') AS emoji,
+                COALESCE(MAX(c.type), 'expense') AS type,
+                COALESCE(SUM(-t.amount), 0) AS total,
+                COUNT(*) AS tx_count
+             FROM transactions t
+             LEFT JOIN categories c ON c.name = t.category
+             WHERE t.amount < 0
+               AND (?1 IS NULL OR t.date >= ?1)
+               AND (?2 IS NULL OR t.date < ?2)
+             GROUP BY t.category
+             ORDER BY total DESC
+             LIMIT ?3",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let expense: Result<Vec<_>, _> = expense_stmt
+        .query_map(
+            params![period_start.clone(), period_end.clone(), safe_limit],
+            |row| {
+                Ok(CategoryTrendItem {
+                    category: row.get("category")?,
+                    emoji: row.get("emoji")?,
+                    r#type: row.get("type")?,
+                    total: row.get("total")?,
+                    tx_count: row.get("tx_count")?,
+                })
+            },
+        )
+        .map_err(|e| e.to_string())?
+        .collect();
+
+    let mut income_stmt = conn
+        .prepare(
+            "SELECT
+                t.category,
+                COALESCE(MAX(c.emoji), '💼') AS emoji,
+                COALESCE(MAX(c.type), 'income') AS type,
+                COALESCE(SUM(t.amount), 0) AS total,
+                COUNT(*) AS tx_count
+             FROM transactions t
+             LEFT JOIN categories c ON c.name = t.category
+             WHERE t.amount > 0
+               AND (?1 IS NULL OR t.date >= ?1)
+               AND (?2 IS NULL OR t.date < ?2)
+             GROUP BY t.category
+             ORDER BY total DESC
+             LIMIT ?3",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let income: Result<Vec<_>, _> = income_stmt
+        .query_map(params![period_start, period_end, safe_limit], |row| {
+            Ok(CategoryTrendItem {
+                category: row.get("category")?,
+                emoji: row.get("emoji")?,
+                r#type: row.get("type")?,
+                total: row.get("total")?,
+                tx_count: row.get("tx_count")?,
+            })
+        })
+        .map_err(|e| e.to_string())?
+        .collect();
+
+    Ok(CategoryTrendSnapshot {
+        expense: expense.map_err(|e| e.to_string())?,
+        income: income.map_err(|e| e.to_string())?,
     })
 }
 

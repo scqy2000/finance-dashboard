@@ -1,11 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
     Account,
-    Transaction,
-    TransactionPage,
-    TransactionFilters,
-    FinanceSnapshot,
     Category,
+    CategoryTrendSnapshot,
+    Transaction,
+    TransactionFilters,
+    TransactionPage,
+    FinanceSnapshot,
     Installment,
     InstallmentPeriod,
 } from './types';
@@ -105,6 +106,13 @@ export const FinanceApi = {
             periodStart: periodStart || null,
             periodEnd: periodEnd || null,
             recentLimit,
+        });
+    },
+    getCategoryTrend(periodStart?: string, periodEnd?: string, limit: number = 6): Promise<CategoryTrendSnapshot> {
+        return invoke<CategoryTrendSnapshot>('get_category_trend', {
+            periodStart: periodStart || null,
+            periodEnd: periodEnd || null,
+            limit,
         });
     },
 };
