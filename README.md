@@ -12,7 +12,7 @@
 
 - 适合个人资产负债管理、分期账单跟踪、日常流水分析。
 - 支持 OpenAI 兼容接口的 AI 财务诊断。
-- API Key 使用系统凭据管理器安全存储，避免明文落盘。
+- API Key 存储在本地 SQLite，并进行应用内加密处理。
 
 ---
 
@@ -42,7 +42,7 @@
 - **高性能流水浏览**：后端分页 + 聚合接口，避免前端全量计算。
 - **分期流程完整**：记一期还款会联动分期状态、账户余额与流水记录。
 - **导入可追溯**：CSV 导入支持列映射与失败明细导出，便于修复重试。
-- **安全配置升级**：AI API Key 存于系统 keyring，不再依赖 localStorage。
+- **安全配置升级**：AI API Key 存于本地数据库并做加密存储。
 - **桌面体验一致**：统一动画语义层与 reduced-motion 降级策略，交互更稳。
 
 ---
@@ -102,7 +102,6 @@
 - Tauri 2
 - rusqlite（bundled SQLite）
 - chrono / uuid
-- keyring
 
 ---
 
@@ -193,7 +192,7 @@ npm run build
 
 说明：
 
-- API Key 存储在系统 keyring。
+- API Key 存储在本地 SQLite（加密）。
 - Base URL / Model / 主题等非敏感项存储在 localStorage。
 
 ### 外观配置
@@ -218,7 +217,7 @@ npm run build
 ### 安全策略
 
 - API Key 不再使用 localStorage 持久化。
-- 关键敏感值使用 keyring 管理。
+- API Key 使用应用内加密后存储在本地数据库。
 
 ### 建议
 
@@ -321,7 +320,7 @@ cargo check --manifest-path src-tauri/Cargo.toml
 ### AI 页面提示未配置 API Key
 
 - 到设置页保存 API Key。
-- 如系统凭据被清理，需要重新填写。
+- 如数据库被清理，需要重新填写。
 
 ### CSV 导入部分失败
 
