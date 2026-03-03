@@ -10,7 +10,7 @@ const getSystemPrompt = () => {
 export const AIChatService = {
     async sendMessage(userMessage: string, onChunk?: (text: string) => void, history?: { role: string; content: string }[]): Promise<string> {
         // 1. Get configs
-        const apiKey = await SecureConfigApi.loadApiKey();
+        const apiKey = (await SecureConfigApi.loadApiKey())?.trim();
         const baseUrl = localStorage.getItem('finance_ai_base_url') || 'https://api.openai.com/v1';
         const model = localStorage.getItem('finance_ai_model') || 'gpt-4o';
 

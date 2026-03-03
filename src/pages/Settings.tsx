@@ -28,7 +28,6 @@ export const Settings: React.FC = () => {
     useEffect(() => {
         let mounted = true;
 
-        const storedApiKey = localStorage.getItem('finance_ai_api_key');
         const storedBaseUrl = localStorage.getItem('finance_ai_base_url');
         const storedModel = localStorage.getItem('finance_ai_model');
         const storedAppName = localStorage.getItem('finance_app_name');
@@ -48,18 +47,9 @@ export const Settings: React.FC = () => {
                 const secureApiKey = await SecureConfigApi.loadApiKey();
                 if (secureApiKey && mounted) {
                     setApiKey(secureApiKey);
-                    return;
-                }
-
-                if (storedApiKey) {
-                    if (mounted) setApiKey(storedApiKey);
-                    await SecureConfigApi.saveApiKey(storedApiKey);
-                    localStorage.removeItem('finance_ai_api_key');
                 }
             } catch {
-                if (storedApiKey && mounted) {
-                    setApiKey(storedApiKey);
-                }
+                // ignore api key load error to keep page usable
             }
         };
 
@@ -73,8 +63,9 @@ export const Settings: React.FC = () => {
 
     const handleSave = async () => {
         try {
-            await SecureConfigApi.saveApiKey(apiKey);
-            localStorage.removeItem('finance_ai_api_key');
+            const normalizedApiKey = apiKey.trim();
+            await SecureConfigApi.saveApiKey(normalizedApiKey);
+            setApiKey(normalizedApiKey);
             localStorage.setItem('finance_ai_base_url', baseUrl);
             localStorage.setItem('finance_ai_model', model);
             localStorage.setItem('finance_app_name', appName);
@@ -99,7 +90,6 @@ export const Settings: React.FC = () => {
             } catch {
                 // ignore clear error to avoid blocking local reset
             }
-            localStorage.removeItem('finance_ai_api_key');
             localStorage.removeItem('finance_ai_base_url');
             localStorage.removeItem('finance_ai_model');
             setApiKey('');
@@ -186,7 +176,7 @@ export const Settings: React.FC = () => {
                 <section className={sectionCls}>
                     <h2 className="text-base font-semibold flex items-center gap-2 mb-2"><SettingsIcon size={20} /> AI 引擎配置 (OpenAI 兼容)</h2>
                     <p className="text-sm text-[var(--text-tertiary)] mb-4">
-                        请输入您的模型服务商提供的 API 凭证。API Key 将保存在系统凭据管理器中，其他参数保存在当前设备本地。
+                        请输入您的模型服务商提供的 API 凭证。API Key 将保存在本地数据库（加密）中，其他参数保存在当前设备本地。
                     </p>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[13px] font-medium text-[var(--text-secondary)] flex items-center gap-1"><Server size={14} /> Base URL (接口地址)</label>
