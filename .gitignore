@@ -21,3 +21,5 @@ src-tauri/**/*.pdb
 # IDE
 .idea/
 .vscode/
+
+devfe.log

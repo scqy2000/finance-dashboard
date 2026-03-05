@@ -151,7 +151,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({ isOpen, accounts
 
             const parsed = new Date(raw);
             if (Number.isNaN(parsed.getTime())) return null;
-            return inputDateTimeToStorage(parsed.toISOString());
+            return inputDateTimeToStorage(raw);
         };
 
         const importRows: ImportRow[] = [];

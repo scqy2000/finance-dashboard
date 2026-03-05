@@ -27,3 +27,4 @@ tauri-plugin-shell = "2"
 rusqlite = { version = "0.33", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
+keyring = "3.6.2"

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, CircleDollarSign, CheckCircle2, Ban, ChevronDown, ChevronUp, ListOrdered, Minus } from 'lucide-react';
 import { Installment, InstallmentPeriod, Account } from '../api/db';
 import { useFeedback } from './ui/FeedbackProvider';
+import { getErrorMessage } from '../utils/errors';
 
 interface InstallmentModalProps {
     isOpen: boolean;
@@ -17,7 +18,7 @@ interface InstallmentModalProps {
 type InputMode = 'equal' | 'custom';
 
 export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, account, installments, onClose, onAdd, onPay, onCancel, onGetPeriods }) => {
-    const { toast } = useFeedback();
+    const { toast, confirm } = useFeedback();
     const [showForm, setShowForm] = useState(false);
     const [totalAmount, setTotalAmount] = useState('');
     const [totalPeriods, setTotalPeriods] = useState('12');
@@ -29,6 +30,8 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
     const [customAmounts, setCustomAmounts] = useState<string[]>([]);
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [periodDetails, setPeriodDetails] = useState<Record<string, InstallmentPeriod[]>>({});
+    const [payingId, setPayingId] = useState<string | null>(null);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
 
     const accountInstallments = useMemo(() => {
         if (!account) return [];
@@ -120,6 +123,39 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
             next[index] = value;
             return next;
         });
+    };
+
+    const handlePay = async (installmentId: string) => {
+        if (payingId || cancellingId) return;
+        setPayingId(installmentId);
+        try {
+            await onPay(installmentId);
+            if (expandedId === installmentId && onGetPeriods) {
+                const details = await onGetPeriods(installmentId);
+                setPeriodDetails(prev => ({ ...prev, [installmentId]: details }));
+            }
+            toast('已记录一期还款', 'success');
+        } catch (e: unknown) {
+            toast(`还款失败: ${getErrorMessage(e)}`, 'error');
+        } finally {
+            setPayingId(null);
+        }
+    };
+
+    const handleCancel = async (installmentId: string) => {
+        if (payingId || cancellingId) return;
+        const ok = await confirm('确认取消分期', '确定取消该分期计划吗？取消后不能继续记账还款。');
+        if (!ok) return;
+
+        setCancellingId(installmentId);
+        try {
+            await onCancel(installmentId);
+            toast('分期计划已取消', 'success');
+        } catch (e: unknown) {
+            toast(`取消失败: ${getErrorMessage(e)}`, 'error');
+        } finally {
+            setCancellingId(null);
+        }
     };
 
 
@@ -220,13 +256,19 @@ export const InstallmentModal: React.FC<InstallmentModalProps> = ({ isOpen, acco
                                     </button>
                                     {isActive && (
                                         <div className="flex gap-1.5">
-                                            <button onClick={() => onPay(inst.id)}
+                                            <button
+                                                type="button"
+                                                disabled={Boolean(payingId || cancellingId)}
+                                                onClick={() => handlePay(inst.id)}
                                                 className="inline-flex items-center gap-1 text-xs py-1 px-3 rounded-lg border-none bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-dark,#4338ca)] text-white cursor-pointer shadow-[0_2px_8px_rgba(99,102,241,0.25)]">
-                                                <CheckCircle2 size={12} /> 记一期还款
+                                                <CheckCircle2 size={12} /> {payingId === inst.id ? '处理中...' : '记一期还款'}
                                             </button>
-                                            <button onClick={() => { if (confirm('确定取消该分期计划？')) onCancel(inst.id); }}
+                                            <button
+                                                type="button"
+                                                disabled={Boolean(payingId || cancellingId)}
+                                                onClick={() => handleCancel(inst.id)}
                                                 className="inline-flex items-center gap-1 text-xs py-1 px-3 rounded-lg border border-red-500/20 bg-red-500/[0.04] text-red-500 cursor-pointer">
-                                                <Ban size={12} /> 取消
+                                                <Ban size={12} /> {cancellingId === inst.id ? '处理中...' : '取消'}
                                             </button>
                                         </div>
                                     )}

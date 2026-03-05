@@ -1,4 +1,5 @@
 use crate::db::{Account, Category, Installment, InstallmentPeriod, Transaction};
+use keyring::Entry;
 use rusqlite::params;
 use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
@@ -8,6 +9,8 @@ use tauri::State;
 pub struct DbState(pub Mutex<Connection>);
 const API_KEY_SETTING_KEY: &str = "finance_ai_api_key";
 const API_KEY_CIPHER_KEY: &[u8] = b"finance-dashboard-local-key";
+const KEYRING_SERVICE: &str = "com.finance.dashboard";
+const KEYRING_ACCOUNT: &str = "finance_ai_api_key";
 
 fn xor_cipher(input: &[u8]) -> Vec<u8> {
     input
@@ -48,6 +51,33 @@ fn decrypt_api_key(cipher_hex: &str) -> Result<String, String> {
     let cipher_bytes = decode_hex(cipher_hex)?;
     let plain_bytes = xor_cipher(&cipher_bytes);
     String::from_utf8(plain_bytes).map_err(|e| e.to_string())
+}
+
+fn keyring_entry() -> Result<Entry, String> {
+    Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT).map_err(|e| e.to_string())
+}
+
+fn keyring_load_api_key() -> Result<Option<String>, String> {
+    let entry = keyring_entry()?;
+    match entry.get_password() {
+        Ok(v) => Ok(Some(v)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+fn keyring_save_api_key(api_key: &str) -> Result<(), String> {
+    let entry = keyring_entry()?;
+    entry.set_password(api_key).map_err(|e| e.to_string())
+}
+
+fn keyring_clear_api_key() -> Result<(), String> {
+    let entry = keyring_entry()?;
+    match entry.delete_credential() {
+        Ok(_) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[derive(serde::Serialize)]
@@ -762,13 +792,33 @@ pub fn create_transaction(mut tx: Transaction, state: State<DbState>) -> Result<
 #[tauri::command]
 pub fn update_transaction(
     id: String,
-    old_tx: Transaction,
+    _old_tx: Transaction,
     new_data: serde_json::Value,
     state: State<DbState>,
 ) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
 
     let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    let old_tx: Transaction = tx_scope
+        .query_row(
+            "SELECT id, account_id, amount, category, description, date, created_at, updated_at FROM transactions WHERE id = ?1",
+            params![&id],
+            |row| {
+                Ok(Transaction {
+                    id: row.get(0)?,
+                    account_id: row.get(1)?,
+                    amount: row.get(2)?,
+                    category: row.get(3)?,
+                    description: row.get(4)?,
+                    date: row.get(5)?,
+                    created_at: row.get(6)?,
+                    updated_at: row.get(7)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "交易不存在".to_string())?;
     // 前端传入的是 Partial 更新，这里动态拼接 SQL 以支持“按需更新字段”。
     let mut sets = Vec::new();
     let mut args: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
@@ -861,14 +911,34 @@ pub fn update_transaction(
 pub fn delete_transaction(tx: Transaction, state: State<DbState>) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
+    let old_tx: Transaction = tx_scope
+        .query_row(
+            "SELECT id, account_id, amount, category, description, date, created_at, updated_at FROM transactions WHERE id = ?1",
+            params![&tx.id],
+            |row| {
+                Ok(Transaction {
+                    id: row.get(0)?,
+                    account_id: row.get(1)?,
+                    amount: row.get(2)?,
+                    category: row.get(3)?,
+                    description: row.get(4)?,
+                    date: row.get(5)?,
+                    created_at: row.get(6)?,
+                    updated_at: row.get(7)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "交易不存在".to_string())?;
 
     tx_scope
-        .execute("DELETE FROM transactions WHERE id = ?1", params![tx.id])
+        .execute("DELETE FROM transactions WHERE id = ?1", params![old_tx.id])
         .map_err(|e| e.to_string())?;
     tx_scope
         .execute(
             "UPDATE accounts SET balance = balance - ?1 WHERE id = ?2",
-            params![tx.amount, tx.account_id],
+            params![old_tx.amount, old_tx.account_id],
         )
         .map_err(|e| e.to_string())?;
 
@@ -1132,10 +1202,17 @@ pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
     let mut conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
     let tx_scope = conn.transaction().map_err(|e| e.to_string())?;
 
-    // 只允许按期次顺序还款：始终取最早一条 pending。
+    // 仅允许 active 状态分期按期次顺序还款：始终取最早一条 pending。
     let next_period_id: Option<String> = tx_scope
         .query_row(
-            "SELECT id FROM installment_periods WHERE installment_id = ?1 AND status = 'pending' ORDER BY period_number LIMIT 1",
+            "SELECT ip.id
+             FROM installment_periods ip
+             JOIN installments i ON i.id = ip.installment_id
+             WHERE ip.installment_id = ?1
+               AND i.status = 'active'
+               AND ip.status = 'pending'
+             ORDER BY ip.period_number
+             LIMIT 1",
             params![&id],
             |row| row.get(0),
         )
@@ -1144,16 +1221,19 @@ pub fn pay_period(id: String, state: State<DbState>) -> Result<(), String> {
 
     let pid = match next_period_id {
         Some(pid) => pid,
-        None => return Err("没有待还期数".into()),
+        None => return Err("没有可支付的待还期数（可能已取消或已完成）".into()),
     };
 
     let now = chrono::Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    tx_scope
+    let updated = tx_scope
         .execute(
-            "UPDATE installment_periods SET status = 'paid', paid_at = ?1 WHERE id = ?2",
+            "UPDATE installment_periods SET status = 'paid', paid_at = ?1 WHERE id = ?2 AND status = 'pending'",
             params![now, pid],
         )
         .map_err(|e| e.to_string())?;
+    if updated == 0 {
+        return Err("期次状态已变化，请刷新后重试".into());
+    }
 
     let (period_amount, inst_account_id, period_number, inst_desc): (f64, String, i64, Option<String>) =
         tx_scope
@@ -1255,6 +1335,10 @@ pub fn cancel_installment(id: String, state: State<DbState>) -> Result<(), Strin
 #[tauri::command]
 pub fn load_api_key(state: State<DbState>) -> Result<Option<String>, String> {
     let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    if let Ok(value) = keyring_load_api_key() {
+        return Ok(value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()));
+    }
+
     let encrypted: Option<String> = conn
         .query_row(
             "SELECT value FROM app_settings WHERE key = ?1",
@@ -1265,7 +1349,16 @@ pub fn load_api_key(state: State<DbState>) -> Result<Option<String>, String> {
         .map_err(|e| e.to_string())?;
 
     match encrypted {
-        Some(cipher_hex) => decrypt_api_key(&cipher_hex).map(Some),
+        Some(cipher_hex) => {
+            let plain = decrypt_api_key(&cipher_hex)?;
+            let trimmed = plain.trim().to_string();
+            if trimmed.is_empty() {
+                Ok(None)
+            } else {
+                let _ = keyring_save_api_key(&trimmed);
+                Ok(Some(trimmed))
+            }
+        }
         None => Ok(None),
     }
 }
@@ -1276,6 +1369,7 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
     let trimmed = api_key.trim();
 
     if trimmed.is_empty() {
+        let _ = keyring_clear_api_key();
         conn.execute(
             "DELETE FROM app_settings WHERE key = ?1",
             params![API_KEY_SETTING_KEY],
@@ -1284,6 +1378,16 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
         return Ok(());
     }
 
+    if keyring_save_api_key(trimmed).is_ok() {
+        conn.execute(
+            "DELETE FROM app_settings WHERE key = ?1",
+            params![API_KEY_SETTING_KEY],
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(());
+    }
+
+    // keyring 不可用时回退本地加密存储。
     let encrypted = encrypt_api_key(trimmed);
     conn.execute(
         "INSERT INTO app_settings (key, value, updated_at) VALUES (?1, ?2, CURRENT_TIMESTAMP)
@@ -1298,6 +1402,7 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
 #[tauri::command]
 pub fn clear_api_key(state: State<DbState>) -> Result<(), String> {
     let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
+    let _ = keyring_clear_api_key();
     conn.execute(
         "DELETE FROM app_settings WHERE key = ?1",
         params![API_KEY_SETTING_KEY],
@@ -1323,4 +1428,37 @@ pub fn get_app_info(app_handle: tauri::AppHandle) -> serde_json::Value {
         "userData": user_data,
         "isPackaged": true, // In Tauri this usually indicates release mode
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyring_smoke_roundtrip() {
+        let account = format!(
+            "{}_test_{}",
+            KEYRING_ACCOUNT,
+            chrono::Utc::now().timestamp_millis()
+        );
+        let entry = Entry::new(KEYRING_SERVICE, &account).expect("create keyring entry failed");
+        let value = format!("smoke_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0));
+
+        entry
+            .set_password(&value)
+            .expect("set keyring password failed");
+
+        let loaded = entry.get_password().expect("get keyring password failed");
+        assert_eq!(loaded, value, "loaded keyring value mismatch");
+
+        entry
+            .delete_credential()
+            .expect("delete keyring credential failed");
+
+        match entry.get_password() {
+            Err(keyring::Error::NoEntry) => {}
+            Ok(v) => panic!("expected no entry after delete, got value: {v}"),
+            Err(e) => panic!("unexpected keyring error after delete: {e}"),
+        }
+    }
 }
