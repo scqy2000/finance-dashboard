@@ -1,5 +1,4 @@
 use crate::db::{Account, Category, Installment, InstallmentPeriod, Transaction};
-use keyring::Entry;
 use rusqlite::params;
 use rusqlite::{Connection, OptionalExtension};
 use std::sync::Mutex;
@@ -9,8 +8,6 @@ use tauri::State;
 pub struct DbState(pub Mutex<Connection>);
 const API_KEY_SETTING_KEY: &str = "finance_ai_api_key";
 const API_KEY_CIPHER_KEY: &[u8] = b"finance-dashboard-local-key";
-const KEYRING_SERVICE: &str = "com.finance.dashboard";
-const KEYRING_ACCOUNT: &str = "finance_ai_api_key";
 
 fn xor_cipher(input: &[u8]) -> Vec<u8> {
     input
@@ -51,33 +48,6 @@ fn decrypt_api_key(cipher_hex: &str) -> Result<String, String> {
     let cipher_bytes = decode_hex(cipher_hex)?;
     let plain_bytes = xor_cipher(&cipher_bytes);
     String::from_utf8(plain_bytes).map_err(|e| e.to_string())
-}
-
-fn keyring_entry() -> Result<Entry, String> {
-    Entry::new(KEYRING_SERVICE, KEYRING_ACCOUNT).map_err(|e| e.to_string())
-}
-
-fn keyring_load_api_key() -> Result<Option<String>, String> {
-    let entry = keyring_entry()?;
-    match entry.get_password() {
-        Ok(v) => Ok(Some(v)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.to_string()),
-    }
-}
-
-fn keyring_save_api_key(api_key: &str) -> Result<(), String> {
-    let entry = keyring_entry()?;
-    entry.set_password(api_key).map_err(|e| e.to_string())
-}
-
-fn keyring_clear_api_key() -> Result<(), String> {
-    let entry = keyring_entry()?;
-    match entry.delete_credential() {
-        Ok(_) => Ok(()),
-        Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(e.to_string()),
-    }
 }
 
 #[derive(serde::Serialize)]
@@ -1335,10 +1305,6 @@ pub fn cancel_installment(id: String, state: State<DbState>) -> Result<(), Strin
 #[tauri::command]
 pub fn load_api_key(state: State<DbState>) -> Result<Option<String>, String> {
     let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
-    if let Ok(value) = keyring_load_api_key() {
-        return Ok(value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()));
-    }
-
     let encrypted: Option<String> = conn
         .query_row(
             "SELECT value FROM app_settings WHERE key = ?1",
@@ -1349,16 +1315,10 @@ pub fn load_api_key(state: State<DbState>) -> Result<Option<String>, String> {
         .map_err(|e| e.to_string())?;
 
     match encrypted {
-        Some(cipher_hex) => {
-            let plain = decrypt_api_key(&cipher_hex)?;
+        Some(cipher_hex) => decrypt_api_key(&cipher_hex).map(|plain| {
             let trimmed = plain.trim().to_string();
-            if trimmed.is_empty() {
-                Ok(None)
-            } else {
-                let _ = keyring_save_api_key(&trimmed);
-                Ok(Some(trimmed))
-            }
-        }
+            if trimmed.is_empty() { None } else { Some(trimmed) }
+        }),
         None => Ok(None),
     }
 }
@@ -1369,7 +1329,6 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
     let trimmed = api_key.trim();
 
     if trimmed.is_empty() {
-        let _ = keyring_clear_api_key();
         conn.execute(
             "DELETE FROM app_settings WHERE key = ?1",
             params![API_KEY_SETTING_KEY],
@@ -1378,16 +1337,6 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
         return Ok(());
     }
 
-    if keyring_save_api_key(trimmed).is_ok() {
-        conn.execute(
-            "DELETE FROM app_settings WHERE key = ?1",
-            params![API_KEY_SETTING_KEY],
-        )
-        .map_err(|e| e.to_string())?;
-        return Ok(());
-    }
-
-    // keyring 不可用时回退本地加密存储。
     let encrypted = encrypt_api_key(trimmed);
     conn.execute(
         "INSERT INTO app_settings (key, value, updated_at) VALUES (?1, ?2, CURRENT_TIMESTAMP)
@@ -1402,7 +1351,6 @@ pub fn save_api_key(api_key: String, state: State<DbState>) -> Result<(), String
 #[tauri::command]
 pub fn clear_api_key(state: State<DbState>) -> Result<(), String> {
     let conn = state.0.lock().map_err(|_| "数据库锁异常".to_string())?;
-    let _ = keyring_clear_api_key();
     conn.execute(
         "DELETE FROM app_settings WHERE key = ?1",
         params![API_KEY_SETTING_KEY],
@@ -1428,37 +1376,4 @@ pub fn get_app_info(app_handle: tauri::AppHandle) -> serde_json::Value {
         "userData": user_data,
         "isPackaged": true, // In Tauri this usually indicates release mode
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn keyring_smoke_roundtrip() {
-        let account = format!(
-            "{}_test_{}",
-            KEYRING_ACCOUNT,
-            chrono::Utc::now().timestamp_millis()
-        );
-        let entry = Entry::new(KEYRING_SERVICE, &account).expect("create keyring entry failed");
-        let value = format!("smoke_{}", chrono::Utc::now().timestamp_nanos_opt().unwrap_or(0));
-
-        entry
-            .set_password(&value)
-            .expect("set keyring password failed");
-
-        let loaded = entry.get_password().expect("get keyring password failed");
-        assert_eq!(loaded, value, "loaded keyring value mismatch");
-
-        entry
-            .delete_credential()
-            .expect("delete keyring credential failed");
-
-        match entry.get_password() {
-            Err(keyring::Error::NoEntry) => {}
-            Ok(v) => panic!("expected no entry after delete, got value: {v}"),
-            Err(e) => panic!("unexpected keyring error after delete: {e}"),
-        }
-    }
 }

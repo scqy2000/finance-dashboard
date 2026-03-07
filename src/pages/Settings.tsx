@@ -176,7 +176,7 @@ export const Settings: React.FC = () => {
                 <section className={sectionCls}>
                     <h2 className="text-base font-semibold flex items-center gap-2 mb-2"><SettingsIcon size={20} /> AI 引擎配置 (OpenAI 兼容)</h2>
                     <p className="text-sm text-[var(--text-tertiary)] mb-4">
-                        请输入您的模型服务商提供的 API 凭证。API Key 会优先保存在系统凭据库（Keychain/Credential Vault），若系统不可用则回退到本地数据库加密存储；其他参数保存在当前设备本地。
+                        请输入您的模型服务商提供的 API 凭证。API Key 将保存在本地数据库（加密）中，其他参数保存在当前设备本地。
                     </p>
                     <div className="flex flex-col gap-1.5">
                         <label className="text-[13px] font-medium text-[var(--text-secondary)] flex items-center gap-1"><Server size={14} /> Base URL (接口地址)</label>
