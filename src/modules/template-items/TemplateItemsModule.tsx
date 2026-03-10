@@ -1,4 +1,6 @@
-import { Plus, RefreshCcw, Upload } from 'lucide-react';
+import { Download, FileDown, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { ItemsApi } from '../../api/client';
+import { downloadTemplateItemsCsv, downloadTemplateItemsCsvSample } from './export/csv';
 import { TemplateItemEditor } from './components/TemplateItemEditor';
 import { TemplateItemsFilters } from './components/TemplateItemsFilters';
 import { TemplateItemsImportModal } from './components/TemplateItemsImportModal';
@@ -25,6 +27,21 @@ export function TemplateItemsModule() {
                     <button type="button" className="btn-secondary" onClick={() => void controller.refreshPage()}>
                         <RefreshCcw size={16} />
                         Refresh
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={async () => {
+                            const items = await ItemsApi.getAll(5000);
+                            downloadTemplateItemsCsv(items);
+                        }}
+                    >
+                        <Download size={16} />
+                        Export CSV
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={downloadTemplateItemsCsvSample}>
+                        <FileDown size={16} />
+                        Download sample
                     </button>
                     <button type="button" className="btn-secondary" data-testid="template-items-import-button" onClick={() => setIsImportOpen(true)}>
                         <Upload size={16} />

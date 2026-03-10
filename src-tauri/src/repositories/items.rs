@@ -6,6 +6,7 @@ use crate::db::TemplateItem;
 
 pub const DEFAULT_PAGE_SIZE: i64 = 12;
 pub const MAX_PAGE_SIZE: i64 = 100;
+pub const MAX_LIST_LIMIT: i64 = 5000;
 
 pub fn list_items(connection: &Connection, limit: i64) -> Result<Vec<TemplateItem>, rusqlite::Error> {
     let mut statement = connection.prepare(

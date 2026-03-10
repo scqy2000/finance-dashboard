@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Download, Upload } from 'lucide-react';
 import { AppSettingsApi, SystemApi } from '../api/client';
-import type { AppInfo } from '../api/types';
+import type { AppInfo, TemplateAppSnapshot } from '../api/types';
 import { useFeedback } from '../components/ui/FeedbackProvider';
+import { refreshTemplateRuntime } from '../store/runtime';
+import { downloadTextFile } from '../utils/download';
 import {
     DEFAULT_APPEARANCE,
     DEFAULT_BRANDING,
@@ -10,6 +13,7 @@ import {
     dispatchTemplateAppearanceEvents,
 } from '../utils/preferences';
 import { getErrorMessage } from '../utils/errors';
+import { exportTemplateSnapshot, importTemplateSnapshot } from '../utils/snapshot';
 
 const NOTE_SETTING_KEY = 'template_workspace_note';
 
@@ -30,6 +34,7 @@ export function Settings() {
     const [noteLoading, setNoteLoading] = useState(true);
     const [noteSaving, setNoteSaving] = useState(false);
     const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     useEffect(() => {
         setAppName(localStorage.getItem(STORAGE_KEYS.appName) || DEFAULT_BRANDING.appName);
@@ -100,6 +105,48 @@ export function Settings() {
             toast(getErrorMessage(error, 'Failed to save note'), 'error');
         } finally {
             setNoteSaving(false);
+        }
+    };
+
+    const handleExportSnapshot = async () => {
+        try {
+            const snapshot = await exportTemplateSnapshot();
+            downloadTextFile(
+                `template-snapshot-${new Date().toISOString().slice(0, 10)}.json`,
+                JSON.stringify(snapshot, null, 2),
+                'application/json;charset=utf-8',
+            );
+            toast('Snapshot exported.', 'success');
+        } catch (error) {
+            toast(getErrorMessage(error, 'Failed to export snapshot'), 'error');
+        }
+    };
+
+    const handleImportSnapshot = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        try {
+            const content = await file.text();
+            const snapshot = JSON.parse(content) as TemplateAppSnapshot;
+            await importTemplateSnapshot(snapshot);
+            applyTheme();
+            dispatchTemplateAppearanceEvents();
+            setAppName(localStorage.getItem(STORAGE_KEYS.appName) || DEFAULT_BRANDING.appName);
+            setAppShortName(localStorage.getItem(STORAGE_KEYS.appShortName) || DEFAULT_BRANDING.appShortName);
+            setThemeColor(localStorage.getItem(STORAGE_KEYS.themeColor) || DEFAULT_APPEARANCE.themeColor);
+            setBackgroundStyle((localStorage.getItem(STORAGE_KEYS.backgroundStyle) as typeof backgroundStyle) || DEFAULT_APPEARANCE.backgroundStyle);
+            setWorkspaceNote(snapshot.workspace_note || '');
+            await refreshTemplateRuntime();
+            toast('Snapshot imported.', 'success');
+        } catch (error) {
+            toast(getErrorMessage(error, 'Failed to import snapshot'), 'error');
+        } finally {
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -207,6 +254,30 @@ export function Settings() {
                         <div className="text-xs text-[var(--text-tertiary)]">User data path</div>
                         <div className="mt-1 break-all text-sm text-[var(--text-primary)]">{appInfo?.userData ?? 'Loading...'}</div>
                     </div>
+                </div>
+            </article>
+
+            <article className="glass-panel p-5">
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-tertiary)]">Snapshot</div>
+                <p className="mt-4 text-sm leading-6 text-[var(--text-secondary)]">
+                    Export or restore the example entity, workspace note, and appearance settings as one JSON snapshot.
+                </p>
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={handleImportSnapshot}
+                />
+                <div className="mt-4 flex flex-wrap gap-3">
+                    <button type="button" className="btn-primary" onClick={() => void handleExportSnapshot()}>
+                        <Download size={16} />
+                        Export snapshot
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+                        <Upload size={16} />
+                        Import snapshot
+                    </button>
                 </div>
             </article>
         </section>

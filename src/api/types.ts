@@ -60,3 +60,15 @@ export interface AppInfo {
     userData: string;
     isPackaged: boolean;
 }
+
+export interface TemplateAppSnapshot {
+    exported_at: string;
+    items: CreateTemplateItemInput[];
+    workspace_note: string;
+    appearance: {
+        appName: string;
+        appShortName: string;
+        themeColor: string;
+        backgroundStyle: string;
+    };
+}

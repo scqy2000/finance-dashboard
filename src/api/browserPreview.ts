@@ -99,7 +99,7 @@ const computeOverview = (items: TemplateItem[]): TemplateOverview => ({
 
 export const BrowserPreviewApi = {
     async getAll(limit?: number) {
-        return sortItems(readPreviewItems()).slice(0, limit ?? 100);
+        return sortItems(readPreviewItems()).slice(0, limit ?? 5000);
     },
 
     async getPage(page = 1, pageSize = 12, filters?: TemplateItemFilters): Promise<TemplateItemPage> {

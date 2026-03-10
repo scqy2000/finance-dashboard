@@ -44,6 +44,7 @@ Frontend:
 - update `src/api/client.ts`
 - copy and rename `src/modules/template-items`
 - update `src/store/useTemplateItemsStore.ts`
+- review `src/utils/snapshot.ts` if the new app needs backup/restore
 
 Backend:
 
@@ -74,6 +75,8 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - browser preview opens with example data
 - theme changes persist
 - one record can be created, edited, deleted
+- CSV import/export works for the example entity
+- snapshot export/import restores data and appearance
 - pagination still works
 - `npm run build:fe` passes
 - `cargo test --manifest-path src-tauri/Cargo.toml` passes

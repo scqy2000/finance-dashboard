@@ -46,7 +46,7 @@ pub fn get_template_items(limit: Option<i64>, state: State<'_, DbState>) -> Resu
 
     let normalized_limit = limit
         .unwrap_or(100)
-        .clamp(1, items_repository::MAX_PAGE_SIZE);
+        .clamp(1, items_repository::MAX_LIST_LIMIT);
 
     items_repository::list_items(&connection, normalized_limit).map_err(|error| error.to_string())
 }
