@@ -1,64 +1,79 @@
-import React, { useState, useEffect } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Blocks, FileStack, LayoutDashboard, Minus, Settings as SettingsIcon, Square, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { Dashboard } from './pages/Dashboard';
-import { Transactions } from './pages/Transactions';
-import { Accounts } from './pages/Accounts';
-import { Analytics } from './pages/Analytics';
+import { Items } from './pages/Items';
+import { Overview } from './pages/Overview';
+import { References } from './pages/References';
 import { Settings } from './pages/Settings';
 import { useStore } from './store/useStore';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Minus, Square, X } from 'lucide-react';
+import {
+    DEFAULT_BRANDING,
+    THEME_EVENTS,
+    applyTheme,
+    getBranding,
+    type NavigationTab,
+} from './utils/preferences';
 
-const hexToRgba = (hex: string, alpha: number) => {
-    const normalized = hex.replace('#', '');
-    if (normalized.length !== 6) {
-        return `rgba(79, 70, 229, ${alpha})`;
-    }
-    const r = parseInt(normalized.slice(0, 2), 16);
-    const g = parseInt(normalized.slice(2, 4), 16);
-    const b = parseInt(normalized.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
-
-const applyTheme = () => {
-    const root = document.documentElement;
-    // Theme Color
-    const themeColor = localStorage.getItem('finance_theme_color') || '#4f46e5'; // default Indigo
-    root.style.setProperty('--color-primary', themeColor);
-    root.style.setProperty('--color-primary-light', hexToRgba(themeColor, 0.12));
-    root.style.setProperty('--color-primary-glow', hexToRgba(themeColor, 0.35));
-
-    // 背景材质通过 CSS 变量切换，避免频繁 class 切换引发闪烁。
-    const bgStyle = localStorage.getItem('finance_bg_style') || 'solid';
-    if (bgStyle === 'mesh') {
-        root.style.setProperty('--bg-app', 'radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)');
-    } else if (bgStyle === 'gradient-blue') {
-        root.style.setProperty('--bg-app', 'linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%)');
-    } else if (bgStyle === 'gradient-purple') {
-        root.style.setProperty('--bg-app', 'linear-gradient(to right, #fa709a 0%, #fee140 100%)');
-    } else {
-        root.style.setProperty('--bg-app', '#f4f6fa'); // solid light gray
-    }
-
+const titleMap: Record<NavigationTab, { title: string; description: string; icon: React.ComponentType<{ size?: number }> }> = {
+    overview: {
+        title: 'Overview',
+        description: 'Shell, runtime and reusable contracts.',
+        icon: LayoutDashboard,
+    },
+    items: {
+        title: 'Items',
+        description: 'Minimal CRUD loop with pagination.',
+        icon: Blocks,
+    },
+    references: {
+        title: 'References',
+        description: 'Reusable modules and extraction map.',
+        icon: FileStack,
+    },
+    settings: {
+        title: 'Settings',
+        description: 'Theme, branding and persisted preferences.',
+        icon: SettingsIcon,
+    },
 };
 
 const App: React.FC = () => {
-    const [currentTab, setCurrentTab] = useState<string>('dashboard');
-    const init = useStore(s => s.init);
+    const [currentTab, setCurrentTab] = useState<NavigationTab>('overview');
+    const [appName, setAppName] = useState(DEFAULT_BRANDING.appName);
+    const init = useStore(state => state.init);
 
     useEffect(() => {
-        applyTheme();
-        // 应用启动时只做一次全局数据预加载。
-        init();
-        window.addEventListener('storage', applyTheme);
-        return () => window.removeEventListener('storage', applyTheme);
+        const syncAppearance = () => {
+            applyTheme();
+            setAppName(getBranding().appName);
+        };
+
+        syncAppearance();
+        void init();
+
+        window.addEventListener('storage', syncAppearance);
+        window.addEventListener(THEME_EVENTS.appearanceChanged, syncAppearance);
+        window.addEventListener(THEME_EVENTS.brandingChanged, syncAppearance);
+
+        return () => {
+            window.removeEventListener('storage', syncAppearance);
+            window.removeEventListener(THEME_EVENTS.appearanceChanged, syncAppearance);
+            window.removeEventListener(THEME_EVENTS.brandingChanged, syncAppearance);
+        };
     }, [init]);
+
+    const currentTitle = useMemo(() => titleMap[currentTab], [currentTab]);
+    const TitleIcon = currentTitle.icon;
 
     return (
         <div className="app-container">
             <div className="title-bar" data-tauri-drag-region>
-                <div className="title-bar-title label" data-tauri-drag-region>
-                    Finance Dashboard
+                <div className="title-bar-title label gap-3" data-tauri-drag-region>
+                    <span className="rounded-full bg-[var(--color-primary-light)] px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-[var(--color-primary)]">
+                        Template
+                    </span>
+                    <span>{appName}</span>
                 </div>
                 <div className="titlebar-actions flex items-center h-full">
                     <button type="button" className="titlebar-btn" onClick={() => getCurrentWindow().minimize()}>
@@ -77,10 +92,19 @@ const App: React.FC = () => {
                 <Sidebar currentTab={currentTab} onChangeTab={setCurrentTab} />
 
                 <main className="page-container">
-                    {currentTab === 'dashboard' && <Dashboard />}
-                    {currentTab === 'transactions' && <Transactions />}
-                    {currentTab === 'accounts' && <Accounts />}
-                    {currentTab === 'analytics' && <Analytics />}
+                    <div className="mb-6 flex items-center gap-4 rounded-[22px] border border-white/60 bg-white/50 px-5 py-4 backdrop-blur-xl">
+                        <div className="rounded-[18px] bg-[var(--color-primary-light)] p-3 text-[var(--color-primary)]">
+                            <TitleIcon size={20} />
+                        </div>
+                        <div>
+                            <div className="text-lg font-semibold text-[var(--text-primary)]">{currentTitle.title}</div>
+                            <div className="text-sm text-[var(--text-secondary)]">{currentTitle.description}</div>
+                        </div>
+                    </div>
+
+                    {currentTab === 'overview' && <Overview />}
+                    {currentTab === 'items' && <Items />}
+                    {currentTab === 'references' && <References />}
                     {currentTab === 'settings' && <Settings />}
                 </main>
             </div>

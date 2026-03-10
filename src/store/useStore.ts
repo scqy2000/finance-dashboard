@@ -1,245 +1,122 @@
 import { create } from 'zustand';
-import {
-    AccountsApi, TransactionsApi, CategoriesApi, InstallmentsApi,
-} from '../api/db';
-import type { Account, Transaction, Category, Installment, InstallmentPeriod } from '../api/db';
+import { ItemsApi, OverviewApi } from '../api/client';
+import type {
+    CreateTemplateItemInput,
+    TemplateItemFilters,
+    TemplateItemPage,
+    TemplateOverview,
+    UpdateTemplateItemInput,
+} from '../api/types';
 
-// ==========================================
-// Store State
-// ==========================================
-interface AppState {
-    // --- Accounts ---
-    accounts: Account[];
-    accountsLoading: boolean;
-    accountsError: string | null;
-    loadAccounts: () => Promise<void>;
-    addAccount: (account: Partial<Account>) => Promise<boolean>;
-    updateAccount: (id: string, data: Partial<Account>) => Promise<boolean>;
-    deleteAccount: (id: string) => Promise<boolean>;
+export const DEFAULT_PAGE_SIZE = 12;
 
-    // --- Transactions ---
-    transactions: Transaction[];
-    transactionsLoading: boolean;
-    transactionsError: string | null;
-    loadTransactions: (limit?: number) => Promise<void>;
-    addTransaction: (tx: Partial<Transaction>) => Promise<boolean>;
-    updateTransaction: (id: string, oldTx: Transaction, newData: Partial<Transaction>) => Promise<boolean>;
-    deleteTransaction: (tx: Transaction) => Promise<boolean>;
-
-    // --- Categories ---
-    categories: Category[];
-    categoriesLoading: boolean;
-    loadCategories: () => Promise<void>;
-    addCategory: (cat: Partial<Category>) => Promise<void>;
-    updateCategory: (id: string, data: Partial<Category>) => Promise<void>;
-    deleteCategory: (id: string) => Promise<void>;
-
-    // --- Installments ---
-    installments: Installment[];
-    installmentsLoading: boolean;
-    loadInstallments: () => Promise<void>;
-    addInstallment: (inst: Partial<Installment>, periodAmounts?: number[], alreadyPaid?: number) => Promise<void>;
-    payPeriod: (id: string) => Promise<void>;
-    cancelInstallment: (id: string) => Promise<void>;
-    getPeriods: (installmentId: string) => Promise<InstallmentPeriod[]>;
-
-    // --- Global ---
+type StoreState = {
     initialized: boolean;
+    overview: TemplateOverview | null;
+    overviewLoading: boolean;
+    itemsPage: TemplateItemPage | null;
+    itemsLoading: boolean;
+    itemsError: string | null;
+    currentPage: number;
+    currentPageSize: number;
+    currentFilters: TemplateItemFilters;
+    loadOverview: () => Promise<void>;
+    loadItemsPage: (page?: number, pageSize?: number, filters?: TemplateItemFilters) => Promise<void>;
+    addItem: (data: CreateTemplateItemInput) => Promise<void>;
+    updateItem: (id: string, data: UpdateTemplateItemInput) => Promise<void>;
+    deleteItem: (id: string) => Promise<void>;
     init: () => Promise<void>;
     refreshAll: () => Promise<void>;
-}
+};
 
-// ==========================================
-// Store Implementation
-// ==========================================
-export const useStore = create<AppState>((set, get) => ({
-    // ----- Accounts -----
-    accounts: [],
-    accountsLoading: true,
-    accountsError: null,
+const defaultFilters: TemplateItemFilters = { query: '', status: 'all' };
 
-    loadAccounts: async () => {
-        set({ accountsLoading: true, accountsError: null });
-        try {
-            const accounts = await AccountsApi.getAll();
-            set({ accounts, accountsLoading: false });
-        } catch (err: any) {
-            set({ accountsError: err.message, accountsLoading: false });
-        }
-    },
-
-    addAccount: async (account) => {
-        try {
-            await AccountsApi.create(account);
-            await get().loadAccounts();
-            return true;
-        } catch (err: any) {
-            set({ accountsError: err.message });
-            return false;
-        }
-    },
-
-    updateAccount: async (id, data) => {
-        try {
-            await AccountsApi.update(id, data);
-            await get().loadAccounts();
-            return true;
-        } catch (err: any) {
-            set({ accountsError: err.message });
-            return false;
-        }
-    },
-
-    deleteAccount: async (id) => {
-        try {
-            await AccountsApi.delete(id);
-            await get().loadAccounts();
-            return true;
-        } catch (err: any) {
-            set({ accountsError: err.message });
-            return false;
-        }
-    },
-
-    // ----- Transactions -----
-    transactions: [],
-    transactionsLoading: true,
-    transactionsError: null,
-
-    loadTransactions: async (limit) => {
-        set({ transactionsLoading: true, transactionsError: null });
-        try {
-            const transactions = await TransactionsApi.getAll(limit);
-            set({ transactions, transactionsLoading: false });
-        } catch (err: any) {
-            set({ transactionsError: err.message, transactionsLoading: false });
-        }
-    },
-
-    addTransaction: async (tx) => {
-        try {
-            await TransactionsApi.create(tx);
-            // 流水写入会影响账户余额，必须联动刷新两份数据。
-            await get().loadTransactions();
-            await get().loadAccounts(); // Balance changed
-            return true;
-        } catch (err: any) {
-            set({ transactionsError: err.message });
-            return false;
-        }
-    },
-
-    updateTransaction: async (id, oldTx, newData) => {
-        try {
-            await TransactionsApi.update(id, oldTx, newData);
-            // 可能跨账户或改金额，刷新策略与新增保持一致。
-            await get().loadTransactions();
-            await get().loadAccounts(); // Balance may have changed
-            return true;
-        } catch (err: any) {
-            set({ transactionsError: err.message });
-            return false;
-        }
-    },
-
-    deleteTransaction: async (tx) => {
-        try {
-            await TransactionsApi.delete(tx);
-            // 删除流水后账户余额会回滚，必须同步刷新。
-            await get().loadTransactions();
-            await get().loadAccounts(); // Balance changed
-            return true;
-        } catch (err: any) {
-            set({ transactionsError: err.message });
-            return false;
-        }
-    },
-
-    // ----- Categories -----
-    categories: [],
-    categoriesLoading: true,
-
-    loadCategories: async () => {
-        set({ categoriesLoading: true });
-        try {
-            const categories = await CategoriesApi.getAll();
-            set({ categories, categoriesLoading: false });
-        } catch (e) {
-            console.error('Failed to load categories', e);
-            set({ categoriesLoading: false });
-        }
-    },
-
-    addCategory: async (cat) => {
-        await CategoriesApi.create(cat);
-        await get().loadCategories();
-    },
-
-    updateCategory: async (id, data) => {
-        await CategoriesApi.update(id, data);
-        await get().loadCategories();
-    },
-
-    deleteCategory: async (id) => {
-        await CategoriesApi.delete(id);
-        await get().loadCategories();
-    },
-
-    // ----- Installments -----
-    installments: [],
-    installmentsLoading: true,
-
-    loadInstallments: async () => {
-        set({ installmentsLoading: true });
-        try {
-            const installments = await InstallmentsApi.getAll();
-            set({ installments, installmentsLoading: false });
-        } catch (e) {
-            console.error('Failed to load installments', e);
-            set({ installmentsLoading: false });
-        }
-    },
-
-    addInstallment: async (inst, periodAmounts, alreadyPaid) => {
-        await InstallmentsApi.create(inst, periodAmounts, alreadyPaid);
-        await get().loadInstallments();
-    },
-
-    payPeriod: async (id) => {
-        await InstallmentsApi.payPeriod(id);
-        await get().loadInstallments();
-        await get().loadAccounts(); // Refresh balance after installment payment
-    },
-
-    cancelInstallment: async (id) => {
-        await InstallmentsApi.cancel(id);
-        await get().loadInstallments();
-    },
-
-    getPeriods: (installmentId) => {
-        return InstallmentsApi.getPeriods(installmentId);
-    },
-
-    // ----- Global -----
+export const useStore = create<StoreState>((set, get) => ({
     initialized: false,
+    overview: null,
+    overviewLoading: false,
+    itemsPage: null,
+    itemsLoading: false,
+    itemsError: null,
+    currentPage: 1,
+    currentPageSize: DEFAULT_PAGE_SIZE,
+    currentFilters: defaultFilters,
+
+    loadOverview: async () => {
+        set({ overviewLoading: true });
+        try {
+            const overview = await OverviewApi.get();
+            set({ overview, overviewLoading: false });
+        } catch (error) {
+            console.error('Failed to load overview', error);
+            set({ overviewLoading: false });
+        }
+    },
+
+    loadItemsPage: async (page, pageSize, filters) => {
+        const nextPage = page ?? get().currentPage;
+        const nextPageSize = pageSize ?? get().currentPageSize;
+        const nextFilters = filters ?? get().currentFilters;
+
+        set({
+            itemsLoading: true,
+            itemsError: null,
+            currentPage: nextPage,
+            currentPageSize: nextPageSize,
+            currentFilters: nextFilters,
+        });
+
+        try {
+            const itemsPage = await ItemsApi.getPage(nextPage, nextPageSize, nextFilters);
+            set({ itemsPage, itemsLoading: false });
+        } catch (error) {
+            console.error('Failed to load items page', error);
+            set({
+                itemsLoading: false,
+                itemsError: error instanceof Error ? error.message : 'Failed to load items',
+            });
+        }
+    },
+
+    addItem: async data => {
+        await ItemsApi.create(data);
+        await get().refreshAll();
+    },
+
+    updateItem: async (id, data) => {
+        await ItemsApi.update(id, data);
+        await get().refreshAll();
+    },
+
+    deleteItem: async id => {
+        await ItemsApi.delete(id);
+
+        const { itemsPage, currentPage } = get();
+        const shouldStepBack = currentPage > 1 && itemsPage && itemsPage.items.length <= 1;
+        if (shouldStepBack) {
+            set({ currentPage: currentPage - 1 });
+        }
+
+        await get().refreshAll();
+    },
 
     init: async () => {
-        // 防止 StrictMode / 重复挂载触发重复初始化请求。
-        if (get().initialized) return;
-        await Promise.all([
-            get().loadAccounts(),
-            get().loadCategories(),
-            get().loadInstallments(),
-        ]);
+        if (get().initialized) {
+            return;
+        }
+
         set({ initialized: true });
+        await Promise.all([
+            get().loadOverview(),
+            get().loadItemsPage(1, DEFAULT_PAGE_SIZE, defaultFilters),
+        ]);
     },
 
     refreshAll: async () => {
+        const { currentPage, currentPageSize, currentFilters } = get();
         await Promise.all([
-            get().loadAccounts(),
-            get().loadCategories(),
-            get().loadInstallments(),
+            get().loadOverview(),
+            get().loadItemsPage(currentPage, currentPageSize, currentFilters),
         ]);
     },
 }));
-

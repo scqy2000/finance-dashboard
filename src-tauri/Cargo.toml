@@ -1,7 +1,7 @@
 [package]
-name = "finance-dashboard"
+name = "local-first-desktop-template"
 version = "0.1.0"
-description = "A personal finance management app"
+description = "A reusable local-first desktop template built with Tauri, React, Rust, and SQLite"
 authors = ["you"]
 license = ""
 repository = ""

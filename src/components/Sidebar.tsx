@@ -1,68 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Wallet, Receipt, PieChart, Settings } from 'lucide-react';
+import { Blocks, FileStack, LayoutDashboard, Settings } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import {
+    DEFAULT_BRANDING,
+    THEME_EVENTS,
+    type NavigationTab,
+    getBranding,
+} from '../utils/preferences';
 
-interface SidebarProps {
-    currentTab: string;
-    onChangeTab: (tab: string) => void;
-}
+type SidebarProps = {
+    currentTab: NavigationTab;
+    onChangeTab: (tab: NavigationTab) => void;
+};
 
-const navItems = [
-    { id: 'dashboard', label: '概览', icon: LayoutDashboard },
-    { id: 'transactions', label: '收支明细', icon: Receipt },
-    { id: 'accounts', label: '资产与负债', icon: Wallet },
-    { id: 'analytics', label: 'AI 财务诊断', icon: PieChart },
-    { id: 'settings', label: '设置', icon: Settings },
+const navigationItems: Array<{
+    id: NavigationTab;
+    label: string;
+    description: string;
+    icon: typeof LayoutDashboard;
+}> = [
+    { id: 'overview', label: 'Overview', description: 'Shell, state and runtime snapshot', icon: LayoutDashboard },
+    { id: 'items', label: 'Items', description: 'Example CRUD with pagination', icon: Blocks },
+    { id: 'references', label: 'References', description: 'Reusable and optional modules', icon: FileStack },
+    { id: 'settings', label: 'Settings', description: 'Theme, branding and persisted prefs', icon: Settings },
 ];
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onChangeTab }) => {
-    const [appName, setAppName] = useState('FinancePro');
-    const [appShort, setAppShort] = useState('FP');
+export function Sidebar({ currentTab, onChangeTab }: SidebarProps) {
+    const [branding, setBranding] = useState(DEFAULT_BRANDING);
 
     useEffect(() => {
-        const loadBranding = () => {
-            setAppName(localStorage.getItem('finance_app_name') || 'FinancePro');
-            setAppShort(localStorage.getItem('finance_app_short') || 'FP');
+        const syncBranding = () => setBranding(getBranding());
+
+        syncBranding();
+        window.addEventListener('storage', syncBranding);
+        window.addEventListener(THEME_EVENTS.brandingChanged, syncBranding);
+
+        return () => {
+            window.removeEventListener('storage', syncBranding);
+            window.removeEventListener(THEME_EVENTS.brandingChanged, syncBranding);
         };
-        loadBranding();
-        window.addEventListener('storage', loadBranding);
-        window.addEventListener('branding-updated', loadBranding);
-        return () => { window.removeEventListener('storage', loadBranding); window.removeEventListener('branding-updated', loadBranding); };
     }, []);
 
     return (
-        <div className="glass-panel w-[260px] h-[calc(100vh-38px-32px)] m-4 ml-4 mb-4 mt-4 flex flex-col py-5 px-4 z-10">
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-10 px-2">
-                <div className="w-9 h-9 bg-gradient-to-br from-[var(--color-primary)] to-[#818cf8] rounded-[10px] flex items-center justify-center text-white font-bold text-base shadow-md hover:shadow-[var(--shadow-md),0_0_24px_rgba(79,70,229,0.35)] transition-shadow duration-300">
-                    {appShort}
+        <aside className="w-[280px] border-r border-[var(--border-light)] bg-white/55 backdrop-blur-xl px-5 py-6 flex flex-col gap-6">
+            <div className="glass-panel px-4 py-4">
+                <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-[18px] bg-[var(--color-primary-light)] text-[var(--color-primary)] flex items-center justify-center text-lg font-semibold">
+                        {branding.appShortName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                        <div className="text-xs uppercase tracking-[0.24em] text-[var(--text-tertiary)]">
+                            Local-First Shell
+                        </div>
+                        <div className="text-[18px] font-semibold text-[var(--text-primary)]">
+                            {branding.appName}
+                        </div>
+                    </div>
                 </div>
-                <span className="font-bold text-lg text-[var(--text-primary)] tracking-tight">{appName}</span>
+                <p className="mt-4 text-sm text-[var(--text-secondary)]">
+                    Keep the window shell, state pattern and SQLite boundary. Replace the example entity with your domain.
+                </p>
             </div>
 
-            {/* Nav */}
-            <nav className="flex flex-col gap-1.5 flex-1">
-                {navItems.map((item) => {
+            <nav className="flex flex-col gap-2">
+                {navigationItems.map(item => {
                     const Icon = item.icon;
                     const isActive = currentTab === item.id;
+
                     return (
                         <button
                             key={item.id}
+                            type="button"
                             onClick={() => onChangeTab(item.id)}
-                            className={`relative flex items-center gap-3.5 w-full py-3 px-3.5 rounded-[var(--radius-md)] border-none text-sm text-left transition-[transform,background-color,color,box-shadow] duration-150 cursor-pointer
-                                ${isActive
-                                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] font-semibold'
-                                    : 'bg-transparent text-[var(--text-secondary)] font-medium hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] hover:translate-x-0.5'
-                                }`}
+                            className={`motion-hover-lift flex items-start gap-3 rounded-[18px] px-4 py-3 text-left border ${
+                                isActive
+                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--text-primary)]'
+                                    : 'border-transparent bg-white/40 text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-white/70'
+                            }`}
                         >
-                            {isActive && (
-                                <span className="absolute -left-1 top-1/2 -translate-y-1/2 w-[3px] h-[18px] rounded-sm bg-gradient-to-b from-[var(--color-primary)] to-[#818cf8]" />
-                            )}
-                            <Icon size={20} />
-                            <span>{item.label}</span>
+                            <div className={`mt-0.5 rounded-[14px] p-2 ${isActive ? 'bg-white/75 text-[var(--color-primary)]' : 'bg-white/65'}`}>
+                                <Icon size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-sm font-semibold">{item.label}</div>
+                                <div className="text-xs leading-5 text-[var(--text-secondary)]">{item.description}</div>
+                            </div>
                         </button>
                     );
                 })}
             </nav>
-        </div>
+
+            <div className="mt-auto glass-panel p-4">
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--text-tertiary)]">Core contract</div>
+                <ul className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
+                    <li>`init()` once per session</li>
+                    <li>`refreshAll()` after writes</li>
+                    <li>Backend writes wrapped in transactions</li>
+                </ul>
+            </div>
+        </aside>
     );
-};
+}

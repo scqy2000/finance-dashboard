@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
 
 /* ==============================================
    Tailwind v4 Theme — Design Tokens
@@ -18,11 +18,11 @@
   --color-border-light: rgba(0, 0, 0, 0.05);
   --color-border-strong: rgba(0, 0, 0, 0.1);
 
-  --color-primary: #4f46e5;
-  --color-primary-dark: #3730a3;
-  --color-primary-hover: #4338ca;
-  --color-primary-light: rgba(79, 70, 229, 0.1);
-  --color-primary-glow: rgba(79, 70, 229, 0.35);
+  --color-primary: #0f766e;
+  --color-primary-dark: #115e59;
+  --color-primary-hover: #0b5f59;
+  --color-primary-light: rgba(15, 118, 110, 0.12);
+  --color-primary-glow: rgba(15, 118, 110, 0.32);
 
   --color-success: #10b981;
   --color-success-bg: rgba(16, 185, 129, 0.1);
@@ -31,7 +31,7 @@
   --color-warning: #f59e0b;
 
   /* Font */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -67,17 +67,17 @@
   --text-tertiary: #9ca3af;
   --border-light: rgba(0, 0, 0, 0.05);
   --border-strong: rgba(0, 0, 0, 0.1);
-  --color-primary: #4f46e5;
-  --color-primary-dark: #3730a3;
-  --color-primary-hover: #4338ca;
-  --color-primary-light: rgba(79, 70, 229, 0.1);
-  --color-primary-glow: rgba(79, 70, 229, 0.35);
+  --color-primary: #0f766e;
+  --color-primary-dark: #115e59;
+  --color-primary-hover: #0b5f59;
+  --color-primary-light: rgba(15, 118, 110, 0.12);
+  --color-primary-glow: rgba(15, 118, 110, 0.32);
   --color-success: #10b981;
   --color-success-bg: rgba(16, 185, 129, 0.1);
   --color-danger: #ef4444;
   --color-danger-bg: rgba(239, 68, 68, 0.1);
   --color-warning: #f59e0b;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);

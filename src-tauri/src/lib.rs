@@ -16,41 +16,25 @@ pub fn run() {
                 )?;
             }
 
-            // Initialize Database
-            let conn = db::init_db(&app.handle()).expect("Failed to initialize database");
-            app.manage(commands::DbState(Mutex::new(conn)));
+            let connection = db::init_db(&app.handle()).expect("failed to initialize database");
+            app.manage(commands::DbState(Mutex::new(connection)));
 
             Ok(())
         })
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            commands::get_accounts,
-            commands::get_account,
-            commands::create_account,
-            commands::update_account,
-            commands::delete_account,
-            commands::get_transactions,
-            commands::get_transactions_page,
-            commands::create_transaction,
-            commands::update_transaction,
-            commands::delete_transaction,
-            commands::get_finance_snapshot,
-            commands::get_category_trend,
-            commands::get_categories,
-            commands::create_category,
-            commands::update_category,
-            commands::delete_category,
-            commands::get_installments,
-            commands::get_installments_by_account,
-            commands::create_installment,
-            commands::get_periods,
-            commands::pay_period,
-            commands::cancel_installment,
-            commands::load_api_key,
-            commands::save_api_key,
-            commands::clear_api_key,
-            commands::get_app_info
+            commands::items::get_template_items,
+            commands::items::get_template_items_page,
+            commands::items::create_template_item,
+            commands::items::update_template_item,
+            commands::items::delete_template_item,
+            commands::items::get_template_overview,
+            commands::settings::load_app_setting,
+            commands::settings::save_app_setting,
+            commands::settings::clear_app_setting,
+            commands::system::get_app_info
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

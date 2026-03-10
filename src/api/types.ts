@@ -1,35 +1,21 @@
-export interface Account {
+export type TemplateItemStatus = 'draft' | 'active' | 'archived';
+
+export interface TemplateItem {
     id: string;
-    name: string;
-    type: 'asset' | 'liability';
-    currency: string;
-    balance: number;
-    color: string;
-    credit_limit: number | null;
-    statement_date: number | null;
-    due_date: number | null;
-    apr: number | null;
+    title: string;
+    summary: string;
+    status: TemplateItemStatus;
     created_at: string;
     updated_at: string;
 }
 
-export type NewAccount = Omit<Account, 'id' | 'created_at' | 'updated_at'>;
-
-export interface Transaction {
-    id: string;
-    account_id: string;
-    amount: number;
-    category: string;
-    description: string | null;
-    date: string;
-    created_at: string;
-    updated_at: string;
+export interface TemplateItemFilters {
+    query?: string;
+    status?: TemplateItemStatus | 'all';
 }
 
-export type NewTransaction = Omit<Transaction, 'id' | 'created_at' | 'updated_at'>;
-
-export interface TransactionPage {
-    items: Transaction[];
+export interface TemplateItemPage {
+    items: TemplateItem[];
     total: number;
     page: number;
     page_size: number;
@@ -37,78 +23,27 @@ export interface TransactionPage {
     has_more: boolean;
 }
 
-export interface TransactionFilters {
-    query?: string;
-    account_id?: string;
-    category?: string;
-    date_from?: string;
-    date_to?: string;
-    min_amount?: number;
-    max_amount?: number;
-    tx_type?: 'expense' | 'income';
+export interface TemplateOverview {
+    total_items: number;
+    active_items: number;
+    archived_items: number;
+    draft_items: number;
 }
 
-export interface FinanceSnapshot {
-    total_assets: number;
-    total_debt: number;
-    net_worth: number;
-    period_income: number;
-    period_expense: number;
-    monthly_installment: number;
-    transaction_count: number;
-    account_count: number;
-    active_installments: number;
-    recent_transactions: Transaction[];
+export interface CreateTemplateItemInput {
+    title: string;
+    summary: string;
+    status: TemplateItemStatus;
 }
 
-export interface CategoryTrendItem {
-    category: string;
-    emoji: string;
-    type: 'expense' | 'income';
-    total: number;
-    tx_count: number;
+export interface UpdateTemplateItemInput {
+    title?: string;
+    summary?: string;
+    status?: TemplateItemStatus;
 }
 
-export interface CategoryTrendSnapshot {
-    expense: CategoryTrendItem[];
-    income: CategoryTrendItem[];
+export interface AppInfo {
+    version: string;
+    userData: string;
+    isPackaged: boolean;
 }
-
-export interface Category {
-    id: string;
-    name: string;
-    type: 'expense' | 'income';
-    emoji: string;
-    sort_order: number;
-    created_at: string;
-}
-
-export type NewCategory = Omit<Category, 'id' | 'created_at'>;
-
-export interface Installment {
-    id: string;
-    account_id: string;
-    total_amount: number;
-    total_periods: number;
-    paid_periods: number;
-    monthly_payment: number;
-    interest_rate: number;
-    start_date: string;
-    description: string | null;
-    status: 'active' | 'completed' | 'cancelled';
-    created_at: string;
-}
-
-export type NewInstallment = Omit<Installment, 'id' | 'paid_periods' | 'status' | 'created_at'>;
-
-export interface InstallmentPeriod {
-    id: string;
-    installment_id: string;
-    period_number: number;
-    amount: number;
-    status: 'pending' | 'paid' | 'skipped';
-    note: string;
-    paid_at: string | null;
-}
-
-export type NewInstallmentPeriod = Omit<InstallmentPeriod, 'id' | 'status' | 'paid_at'>;
