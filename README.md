@@ -27,6 +27,7 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - `docs/reference-map.md`: extraction guidance for what to reuse directly and what to adapt first
 - `docs/reference-index.md`: reference files grouped by theme
 - `docs/template-items-module.md`: how to copy and reshape the example CRUD module
+- `docs/transplant-playbook.md`: fastest path for turning this repo into a new product
 
 ## Runtime contracts kept on purpose
 
@@ -66,3 +67,4 @@ cargo test --manifest-path src-tauri/Cargo.toml
 4. Pull optional ideas from `reference/` only after the new domain model is stable.
 5. Update `docs/reference-map.md` to document what your project now treats as core vs optional.
 6. Use `docs/template-items-module.md` when cloning the example CRUD module into a real feature.
+7. Follow `docs/transplant-playbook.md` if you want the shortest safe migration path.

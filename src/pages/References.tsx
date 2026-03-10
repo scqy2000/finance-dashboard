@@ -33,6 +33,7 @@ const sourcePaths = [
     'docs/reference-map.md',
     'docs/reference-index.md',
     'docs/template-items-module.md',
+    'docs/transplant-playbook.md',
 ];
 
 const themedReferenceGroups = [

@@ -25,7 +25,7 @@ It keeps four things together:
 1. Copy `src/modules/template-items` to a new module directory.
 2. Replace `TemplateItem` types in `src/api/types.ts`.
 3. Replace `ItemsApi` calls in `src/api/client.ts` with the new command names.
-4. Update `src/store/useStore.ts` selectors and actions for the new entity.
+4. Update `src/store/useTemplateItemsStore.ts` selectors and actions for the new entity.
 5. Change the copy in `constants.ts`.
 6. Swap the editor fields first, then adjust filters and list columns.
 
