@@ -1,57 +1,37 @@
 import { create } from 'zustand';
-import { ItemsApi, OverviewApi } from '../api/client';
+import { ItemsApi } from '../api/client';
 import type {
     CreateTemplateItemInput,
     TemplateItemFilters,
     TemplateItemPage,
-    TemplateOverview,
     UpdateTemplateItemInput,
 } from '../api/types';
+import { useAppShellStore } from './useAppShellStore';
 
 export const DEFAULT_PAGE_SIZE = 12;
 
-type StoreState = {
-    initialized: boolean;
-    overview: TemplateOverview | null;
-    overviewLoading: boolean;
+type TemplateItemsState = {
     itemsPage: TemplateItemPage | null;
     itemsLoading: boolean;
     itemsError: string | null;
     currentPage: number;
     currentPageSize: number;
     currentFilters: TemplateItemFilters;
-    loadOverview: () => Promise<void>;
     loadItemsPage: (page?: number, pageSize?: number, filters?: TemplateItemFilters) => Promise<void>;
     addItem: (data: CreateTemplateItemInput) => Promise<void>;
     updateItem: (id: string, data: UpdateTemplateItemInput) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
-    init: () => Promise<void>;
-    refreshAll: () => Promise<void>;
 };
 
 const defaultFilters: TemplateItemFilters = { query: '', status: 'all' };
 
-export const useStore = create<StoreState>((set, get) => ({
-    initialized: false,
-    overview: null,
-    overviewLoading: false,
+export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
     itemsPage: null,
     itemsLoading: false,
     itemsError: null,
     currentPage: 1,
     currentPageSize: DEFAULT_PAGE_SIZE,
     currentFilters: defaultFilters,
-
-    loadOverview: async () => {
-        set({ overviewLoading: true });
-        try {
-            const overview = await OverviewApi.get();
-            set({ overview, overviewLoading: false });
-        } catch (error) {
-            console.error('Failed to load overview', error);
-            set({ overviewLoading: false });
-        }
-    },
 
     loadItemsPage: async (page, pageSize, filters) => {
         const nextPage = page ?? get().currentPage;
@@ -80,12 +60,12 @@ export const useStore = create<StoreState>((set, get) => ({
 
     addItem: async data => {
         await ItemsApi.create(data);
-        await get().refreshAll();
+        await refreshTemplateItemsRuntime(get);
     },
 
     updateItem: async (id, data) => {
         await ItemsApi.update(id, data);
-        await get().refreshAll();
+        await refreshTemplateItemsRuntime(get);
     },
 
     deleteItem: async id => {
@@ -97,26 +77,16 @@ export const useStore = create<StoreState>((set, get) => ({
             set({ currentPage: currentPage - 1 });
         }
 
-        await get().refreshAll();
-    },
-
-    init: async () => {
-        if (get().initialized) {
-            return;
-        }
-
-        set({ initialized: true });
-        await Promise.all([
-            get().loadOverview(),
-            get().loadItemsPage(1, DEFAULT_PAGE_SIZE, defaultFilters),
-        ]);
-    },
-
-    refreshAll: async () => {
-        const { currentPage, currentPageSize, currentFilters } = get();
-        await Promise.all([
-            get().loadOverview(),
-            get().loadItemsPage(currentPage, currentPageSize, currentFilters),
-        ]);
+        await refreshTemplateItemsRuntime(get);
     },
 }));
+
+async function refreshTemplateItemsRuntime(get: () => TemplateItemsState) {
+    const { currentPage, currentPageSize, currentFilters, loadItemsPage } = get();
+    await Promise.all([
+        useAppShellStore.getState().loadOverview(),
+        loadItemsPage(currentPage, currentPageSize, currentFilters),
+    ]);
+}
+
+export const templateItemsDefaultFilters = defaultFilters;

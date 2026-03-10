@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Database, MonitorSmartphone, Rocket, Shapes } from 'lucide-react';
 import { SystemApi } from '../api/client';
 import type { AppInfo } from '../api/types';
-import { useStore } from '../store/useStore';
+import { useAppShellStore } from '../store/useAppShellStore';
 
 const pillars = [
     {
@@ -28,8 +28,8 @@ const pillars = [
 ];
 
 export function Overview() {
-    const overview = useStore(state => state.overview);
-    const overviewLoading = useStore(state => state.overviewLoading);
+    const overview = useAppShellStore(state => state.overview);
+    const overviewLoading = useAppShellStore(state => state.overviewLoading);
     const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
 
     useEffect(() => {

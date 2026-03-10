@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CreateTemplateItemInput, TemplateItem, TemplateItemFilters } from '../../api/types';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { useStore } from '../../store/useStore';
+import { useTemplateItemsStore } from '../../store/useTemplateItemsStore';
 import { getErrorMessage } from '../../utils/errors';
 import { templateItemsCopy } from './constants';
 
 export function useTemplateItemsController() {
     const { toast, confirm } = useFeedback();
-    const itemsPage = useStore(state => state.itemsPage);
-    const itemsLoading = useStore(state => state.itemsLoading);
-    const itemsError = useStore(state => state.itemsError);
-    const currentFilters = useStore(state => state.currentFilters);
-    const currentPage = useStore(state => state.currentPage);
-    const currentPageSize = useStore(state => state.currentPageSize);
-    const loadItemsPage = useStore(state => state.loadItemsPage);
-    const addItem = useStore(state => state.addItem);
-    const updateItem = useStore(state => state.updateItem);
-    const deleteItem = useStore(state => state.deleteItem);
+    const itemsPage = useTemplateItemsStore(state => state.itemsPage);
+    const itemsLoading = useTemplateItemsStore(state => state.itemsLoading);
+    const itemsError = useTemplateItemsStore(state => state.itemsError);
+    const currentFilters = useTemplateItemsStore(state => state.currentFilters);
+    const currentPage = useTemplateItemsStore(state => state.currentPage);
+    const currentPageSize = useTemplateItemsStore(state => state.currentPageSize);
+    const loadItemsPage = useTemplateItemsStore(state => state.loadItemsPage);
+    const addItem = useTemplateItemsStore(state => state.addItem);
+    const updateItem = useTemplateItemsStore(state => state.updateItem);
+    const deleteItem = useTemplateItemsStore(state => state.deleteItem);
 
     const [draftFilters, setDraftFilters] = useState<TemplateItemFilters>(currentFilters);
     const [isModalOpen, setIsModalOpen] = useState(false);

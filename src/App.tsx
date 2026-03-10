@@ -6,7 +6,7 @@ import { Items } from './pages/Items';
 import { Overview } from './pages/Overview';
 import { References } from './pages/References';
 import { Settings } from './pages/Settings';
-import { useStore } from './store/useStore';
+import { initializeTemplateRuntime } from './store/runtime';
 import {
     DEFAULT_BRANDING,
     THEME_EVENTS,
@@ -41,7 +41,6 @@ const titleMap: Record<NavigationTab, { title: string; description: string; icon
 const App: React.FC = () => {
     const [currentTab, setCurrentTab] = useState<NavigationTab>('overview');
     const [appName, setAppName] = useState(DEFAULT_BRANDING.appName);
-    const init = useStore(state => state.init);
 
     useEffect(() => {
         const syncAppearance = () => {
@@ -50,7 +49,7 @@ const App: React.FC = () => {
         };
 
         syncAppearance();
-        void init();
+        void initializeTemplateRuntime();
 
         window.addEventListener('storage', syncAppearance);
         window.addEventListener(THEME_EVENTS.appearanceChanged, syncAppearance);
@@ -61,7 +60,7 @@ const App: React.FC = () => {
             window.removeEventListener(THEME_EVENTS.appearanceChanged, syncAppearance);
             window.removeEventListener(THEME_EVENTS.brandingChanged, syncAppearance);
         };
-    }, [init]);
+    }, []);
 
     const currentTitle = useMemo(() => titleMap[currentTab], [currentTab]);
     const TitleIcon = currentTitle.icon;
