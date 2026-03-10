@@ -10,7 +10,8 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - SQLite initialization, lightweight `user_version` migrations, WAL mode, and one seeded example entity
 - Theme tokens, local appearance preferences, toast and confirm feedback primitives
 - One complete CRUD example with pagination, CSV import/export, sample template download, and a persisted app setting
-- JSON snapshot export/import for local-first backup and restore
+- One associated-entity sample: parent items with child steps, aggregate counts, and transactional child writes
+- JSON snapshot export/import for local-first backup and restore, including child records
 
 ## What is not in template core
 
@@ -36,12 +37,13 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - Zustand store keeps `init()` and `refreshAll()` as the default lifecycle contract
 - Backend write commands run in transactions
 - Backend update and delete flows read the current database record instead of trusting stale client copies
+- Parent-child mutations refresh parent aggregates through persisted state, not client-side guesses
 - Non-sensitive appearance preferences stay in local storage; SQLite-backed settings are explicit and opt-in
 
 ## Template pages
 
 - `Overview`: runtime status and template intent
-- `Items`: example CRUD entity with pagination plus CSV import/export
+- `Items`: example CRUD entity with pagination, child steps, and CSV import/export
 - `References`: direct reuse vs optional reference material
 - `Settings`: local appearance settings, persisted note, and JSON snapshot import/export
 
@@ -65,10 +67,11 @@ npm run test:e2e
 
 If the app runs outside Tauri, the frontend now falls back to a localStorage-backed browser preview mode.
 
-That mode exists for two reasons:
+That mode exists for three reasons:
 
 - fast UI review without starting the desktop runtime
 - stable Playwright smoke tests for the template CRUD loop
+- validating parent-child flows before wiring a new backend
 
 ## Starting a new app from this template
 

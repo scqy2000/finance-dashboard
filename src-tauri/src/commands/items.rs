@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::commands::DbState;
-use crate::db::TemplateItem;
+use crate::db::{TemplateItem, TemplateItemStep};
 use crate::repositories::items as items_repository;
 
 #[derive(Deserialize)]
@@ -16,6 +16,18 @@ pub struct CreateTemplateItemInput {
 pub struct UpdateTemplateItemInput {
     pub title: Option<String>,
     pub summary: Option<String>,
+    pub status: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct CreateTemplateItemStepInput {
+    pub title: String,
+    pub status: String,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateTemplateItemStepInput {
+    pub title: Option<String>,
     pub status: Option<String>,
 }
 
@@ -38,7 +50,10 @@ pub struct TemplateItemPage {
 }
 
 #[tauri::command]
-pub fn get_template_items(limit: Option<i64>, state: State<'_, DbState>) -> Result<Vec<TemplateItem>, String> {
+pub fn get_template_items(
+    limit: Option<i64>,
+    state: State<'_, DbState>,
+) -> Result<Vec<TemplateItem>, String> {
     let connection = state
         .0
         .lock()
@@ -142,7 +157,7 @@ pub fn update_template_item(
     };
 
     items_repository::update_item(&mut connection, &id, &title, &summary, &status)
-        .map_err(map_repository_error)?;
+        .map_err(map_item_repository_error)?;
 
     map_item_not_found(items_repository::fetch_item_by_id(&connection, &id))
 }
@@ -155,7 +170,80 @@ pub fn delete_template_item(id: String, state: State<'_, DbState>) -> Result<(),
         .map_err(|error| format!("failed to lock database: {error}"))?;
 
     map_item_not_found(items_repository::fetch_item_by_id(&connection, &id))?;
-    items_repository::delete_item(&mut connection, &id).map_err(map_repository_error)?;
+    items_repository::delete_item(&mut connection, &id).map_err(map_item_repository_error)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_template_item_steps(
+    item_id: String,
+    state: State<'_, DbState>,
+) -> Result<Vec<TemplateItemStep>, String> {
+    let connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    map_item_not_found(items_repository::fetch_item_by_id(&connection, &item_id))?;
+    items_repository::list_item_steps(&connection, &item_id).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn create_template_item_step(
+    item_id: String,
+    step: CreateTemplateItemStepInput,
+    state: State<'_, DbState>,
+) -> Result<TemplateItemStep, String> {
+    let mut connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    let title = normalize_title(&step.title)?;
+    let status = normalize_step_status(Some(step.status.as_str()))?;
+    let id = items_repository::create_item_step(&mut connection, &item_id, &title, &status)
+        .map_err(map_item_repository_error)?;
+
+    map_step_not_found(items_repository::fetch_item_step_by_id(&connection, &id))
+}
+
+#[tauri::command]
+pub fn update_template_item_step(
+    id: String,
+    data: UpdateTemplateItemStepInput,
+    state: State<'_, DbState>,
+) -> Result<TemplateItemStep, String> {
+    let mut connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    let current = map_step_not_found(items_repository::fetch_item_step_by_id(&connection, &id))?;
+
+    let title = match data.title.as_deref() {
+        Some(value) => normalize_title(value)?,
+        None => current.title.clone(),
+    };
+    let status = match data.status.as_deref() {
+        Some(value) => normalize_step_status(Some(value))?,
+        None => current.status.clone(),
+    };
+
+    items_repository::update_item_step(&mut connection, &id, &title, &status)
+        .map_err(map_step_repository_error)?;
+
+    map_step_not_found(items_repository::fetch_item_step_by_id(&connection, &id))
+}
+
+#[tauri::command]
+pub fn delete_template_item_step(id: String, state: State<'_, DbState>) -> Result<(), String> {
+    let mut connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    map_step_not_found(items_repository::fetch_item_step_by_id(&connection, &id))?;
+    items_repository::delete_item_step(&mut connection, &id).map_err(map_step_repository_error)?;
     Ok(())
 }
 
@@ -206,25 +294,55 @@ fn normalize_status(value: Option<&str>) -> Result<String, String> {
     }
 }
 
-fn map_item_not_found(result: Result<TemplateItem, rusqlite::Error>) -> Result<TemplateItem, String> {
-    result.map_err(map_repository_error)
+fn normalize_step_status(value: Option<&str>) -> Result<String, String> {
+    match value.map(str::trim) {
+        Some("pending") => Ok("pending".to_string()),
+        Some("done") => Ok("done".to_string()),
+        Some(_) => Err("invalid step status".to_string()),
+        None => Ok("pending".to_string()),
+    }
 }
 
-fn map_repository_error(error: rusqlite::Error) -> String {
+fn map_item_not_found(
+    result: Result<TemplateItem, rusqlite::Error>,
+) -> Result<TemplateItem, String> {
+    result.map_err(map_item_repository_error)
+}
+
+fn map_step_not_found(
+    result: Result<TemplateItemStep, rusqlite::Error>,
+) -> Result<TemplateItemStep, String> {
+    result.map_err(map_step_repository_error)
+}
+
+fn map_item_repository_error(error: rusqlite::Error) -> String {
     match error {
         rusqlite::Error::QueryReturnedNoRows => "item not found".to_string(),
         other => other.to_string(),
     }
 }
 
+fn map_step_repository_error(error: rusqlite::Error) -> String {
+    match error {
+        rusqlite::Error::QueryReturnedNoRows => "step not found".to_string(),
+        other => other.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{normalize_status, normalize_title};
+    use super::{normalize_status, normalize_step_status, normalize_title};
 
     #[test]
     fn status_normalization_rejects_invalid_values() {
         assert_eq!(normalize_status(Some("active")).unwrap(), "active");
         assert!(normalize_status(Some("unknown")).is_err());
+    }
+
+    #[test]
+    fn step_status_normalization_rejects_invalid_values() {
+        assert_eq!(normalize_step_status(Some("done")).unwrap(), "done");
+        assert!(normalize_step_status(Some("paused")).is_err());
     }
 
     #[test]

@@ -2,13 +2,25 @@ use rusqlite::{Connection, Result};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct TemplateItem {
     pub id: String,
     pub title: String,
     pub summary: String,
+    pub status: String,
+    pub created_at: String,
+    pub updated_at: String,
+    pub total_steps: i64,
+    pub completed_steps: i64,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct TemplateItemStep {
+    pub id: String,
+    pub item_id: String,
+    pub title: String,
     pub status: String,
     pub created_at: String,
     pub updated_at: String,
@@ -45,8 +57,19 @@ pub fn init_db(app: &AppHandle) -> Result<Connection> {
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS template_item_steps (
+            id TEXT PRIMARY KEY,
+            item_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(item_id) REFERENCES template_items(id) ON DELETE CASCADE
+        );
+
         CREATE INDEX IF NOT EXISTS idx_template_items_status ON template_items(status);
         CREATE INDEX IF NOT EXISTS idx_template_items_updated_at ON template_items(updated_at DESC, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_template_item_steps_item_status ON template_item_steps(item_id, status, updated_at DESC);
         "#,
     )?;
 
@@ -63,7 +86,31 @@ fn apply_migrations(conn: &Connection) -> Result<()> {
         migrate_to_v1(conn)?;
     }
 
+    if current_version < 2 {
+        migrate_to_v2(conn)?;
+    }
+
     conn.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    Ok(())
+}
+
+fn migrate_to_v2(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS template_item_steps (
+            id TEXT PRIMARY KEY,
+            item_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(item_id) REFERENCES template_items(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_template_item_steps_item_status ON template_item_steps(item_id, status, updated_at DESC);
+        "#,
+    )?;
+
     Ok(())
 }
 
@@ -131,6 +178,7 @@ fn ensure_column(conn: &Connection, table: &str, column: &str, statement: &str) 
 fn seed_example_data(conn: &Connection) -> Result<()> {
     let count: i64 = conn.query_row("SELECT COUNT(*) FROM template_items", [], |row| row.get(0))?;
     if count > 0 {
+        seed_example_steps(conn)?;
         return Ok(());
     }
 
@@ -144,6 +192,36 @@ fn seed_example_data(conn: &Connection) -> Result<()> {
             "Start with one small example entity",
             "Replace this record shape with your own domain, but keep the page flow, state contract and write transaction pattern.",
             "active",
+        ),
+    )?;
+
+    seed_example_steps(conn)?;
+
+    Ok(())
+}
+
+fn seed_example_steps(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM template_item_steps", [], |row| {
+        row.get(0)
+    })?;
+    if count > 0 {
+        return Ok(());
+    }
+
+    conn.execute(
+        r#"
+        INSERT INTO template_item_steps (id, item_id, title, status)
+        VALUES (?1, ?2, ?3, ?4), (?5, ?6, ?7, ?8)
+        "#,
+        (
+            "welcome-step-1",
+            "welcome-template-item",
+            "Rename the template metadata",
+            "done",
+            "welcome-step-2",
+            "welcome-template-item",
+            "Replace the example entity with your own domain",
+            "pending",
         ),
     )?;
 

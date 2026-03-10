@@ -9,6 +9,9 @@ export class TemplateItemsPage {
     readonly titleInput: Locator;
     readonly summaryInput: Locator;
     readonly statusSelect: Locator;
+    readonly stepTitleInput: Locator;
+    readonly stepStatusSelect: Locator;
+    readonly stepSaveButton: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -19,6 +22,9 @@ export class TemplateItemsPage {
         this.titleInput = page.getByTestId('template-item-title-input');
         this.summaryInput = page.getByTestId('template-item-summary-input');
         this.statusSelect = page.getByTestId('template-item-status-select');
+        this.stepTitleInput = page.getByTestId('template-item-step-title-input');
+        this.stepStatusSelect = page.getByTestId('template-item-step-status-select');
+        this.stepSaveButton = page.getByTestId('template-item-step-save-button');
     }
 
     async goto() {
@@ -60,6 +66,31 @@ export class TemplateItemsPage {
         await this.page.getByTestId('template-items-import-submit').click();
         await expect(this.page.getByRole('button', { name: 'Done' })).toBeVisible();
         await this.page.getByRole('button', { name: 'Done' }).click();
+    }
+
+    async openSteps(title: string) {
+        const row = this.rowByTitle(title);
+        await row.getByRole('button', { name: 'Steps' }).click();
+        await expect(this.page.getByText(title).nth(1)).toBeVisible();
+    }
+
+    async addStep(title: string, status: 'pending' | 'done' = 'pending') {
+        await this.stepTitleInput.fill(title);
+        await this.stepStatusSelect.selectOption(status);
+        await this.stepSaveButton.click();
+        await expect(this.page.getByTestId('template-item-steps-list')).toContainText(title);
+    }
+
+    async expectStepSummary(summary: string) {
+        await expect(this.page.getByTestId('template-item-steps-summary')).toHaveText(summary);
+    }
+
+    async closeSteps() {
+        await this.page.getByRole('button', { name: 'Close' }).nth(0).click();
+    }
+
+    async expectRowSteps(title: string, summary: string) {
+        await expect(this.rowByTitle(title).getByText(summary)).toBeVisible();
     }
 
     async deleteItem(title: string) {

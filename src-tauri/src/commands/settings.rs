@@ -11,11 +11,16 @@ pub fn load_app_setting(key: String, state: State<'_, DbState>) -> Result<Option
         .lock()
         .map_err(|error| format!("failed to lock database: {error}"))?;
 
-    settings_repository::load_setting(&connection, &normalized_key).map_err(|error| error.to_string())
+    settings_repository::load_setting(&connection, &normalized_key)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-pub fn save_app_setting(key: String, value: String, state: State<'_, DbState>) -> Result<(), String> {
+pub fn save_app_setting(
+    key: String,
+    value: String,
+    state: State<'_, DbState>,
+) -> Result<(), String> {
     let normalized_key = normalize_key(&key)?;
     let normalized_value = value.trim().to_string();
 
@@ -38,7 +43,8 @@ pub fn clear_app_setting(key: String, state: State<'_, DbState>) -> Result<(), S
         .lock()
         .map_err(|error| format!("failed to lock database: {error}"))?;
 
-    settings_repository::clear_setting(&connection, &normalized_key).map_err(|error| error.to_string())?;
+    settings_repository::clear_setting(&connection, &normalized_key)
+        .map_err(|error| error.to_string())?;
 
     Ok(())
 }

@@ -8,6 +8,7 @@ type TemplateItemsListProps = {
     currentPageSize: number;
     emptyStateMessage: string;
     onEdit: (item: TemplateItem) => void;
+    onOpenSteps: (item: TemplateItem) => void;
     onDelete: (item: TemplateItem) => Promise<void>;
     onPreviousPage: () => Promise<void>;
     onNextPage: () => Promise<void>;
@@ -22,6 +23,15 @@ const formatDate = (value: string) => {
     return parsed.toLocaleString();
 };
 
+const formatSteps = (item: TemplateItem) => {
+    const total = item.total_steps ?? 0;
+    const completed = item.completed_steps ?? 0;
+    if (total === 0) {
+        return 'Steps 0/0 done';
+    }
+    return `Steps ${completed}/${total} done`;
+};
+
 export function TemplateItemsList({
     itemsPage,
     itemsLoading,
@@ -29,6 +39,7 @@ export function TemplateItemsList({
     currentPageSize,
     emptyStateMessage,
     onEdit,
+    onOpenSteps,
     onDelete,
     onPreviousPage,
     onNextPage,
@@ -56,7 +67,7 @@ export function TemplateItemsList({
             ) : itemsPage && itemsPage.items.length > 0 ? (
                 <div className="divide-y divide-[var(--border-light)]">
                     {itemsPage.items.map(item => (
-                        <TemplateItemsListRow key={item.id} item={item} onEdit={onEdit} onDelete={onDelete} />
+                        <TemplateItemsListRow key={item.id} item={item} onEdit={onEdit} onOpenSteps={onOpenSteps} onDelete={onDelete} />
                     ))}
                 </div>
             ) : (
@@ -93,10 +104,11 @@ export function TemplateItemsList({
 type TemplateItemsListRowProps = {
     item: TemplateItem;
     onEdit: (item: TemplateItem) => void;
+    onOpenSteps: (item: TemplateItem) => void;
     onDelete: (item: TemplateItem) => Promise<void>;
 };
 
-function TemplateItemsListRow({ item, onEdit, onDelete }: TemplateItemsListRowProps) {
+function TemplateItemsListRow({ item, onEdit, onOpenSteps, onDelete }: TemplateItemsListRowProps) {
     const badgeClass = templateItemStatusBadgeMap[item.status as TemplateItemStatus];
 
     return (
@@ -106,6 +118,9 @@ function TemplateItemsListRow({ item, onEdit, onDelete }: TemplateItemsListRowPr
                     <h2 className="text-lg font-semibold text-[var(--text-primary)]">{item.title}</h2>
                     <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${badgeClass}`}>
                         {item.status}
+                    </span>
+                    <span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-medium text-sky-700" data-testid={`template-item-steps-count-${item.id}`}>
+                        {formatSteps(item)}
                     </span>
                 </div>
                 <p className="mt-3 max-w-[720px] whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">
@@ -118,7 +133,10 @@ function TemplateItemsListRow({ item, onEdit, onDelete }: TemplateItemsListRowPr
                 </div>
             </div>
 
-            <div className="flex gap-3 xl:shrink-0">
+            <div className="flex flex-wrap gap-3 xl:shrink-0">
+                <button type="button" className="btn-secondary" data-testid={`template-item-steps-${item.id}`} onClick={() => onOpenSteps(item)}>
+                    Steps
+                </button>
                 <button type="button" className="btn-secondary" data-testid={`template-item-edit-${item.id}`} onClick={() => onEdit(item)}>
                     Edit
                 </button>

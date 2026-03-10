@@ -1,5 +1,5 @@
 import { AppSettingsApi, ItemsApi } from '../api/client';
-import type { TemplateAppSnapshot } from '../api/types';
+import type { CreateTemplateItemStepInput, TemplateAppSnapshot } from '../api/types';
 import { DEFAULT_APPEARANCE, DEFAULT_BRANDING, STORAGE_KEYS } from './preferences';
 
 const WORKSPACE_NOTE_KEY = 'template_workspace_note';
@@ -10,13 +10,21 @@ export async function exportTemplateSnapshot() {
         AppSettingsApi.load(WORKSPACE_NOTE_KEY),
     ]);
 
-    const snapshot: TemplateAppSnapshot = {
-        exported_at: new Date().toISOString(),
-        items: items.map(item => ({
+    const itemsWithSteps = await Promise.all(
+        items.map(async item => ({
             title: item.title,
             summary: item.summary,
             status: item.status,
+            steps: (await ItemsApi.getSteps(item.id)).map<CreateTemplateItemStepInput>(step => ({
+                title: step.title,
+                status: step.status,
+            })),
         })),
+    );
+
+    const snapshot: TemplateAppSnapshot = {
+        exported_at: new Date().toISOString(),
+        items: itemsWithSteps,
         workspace_note: workspaceNote ?? '',
         appearance: {
             appName: localStorage.getItem(STORAGE_KEYS.appName) || DEFAULT_BRANDING.appName,
@@ -32,7 +40,18 @@ export async function exportTemplateSnapshot() {
 export async function importTemplateSnapshot(snapshot: TemplateAppSnapshot) {
     const existingItems = await ItemsApi.getAll(5000);
     await Promise.all(existingItems.map(item => ItemsApi.delete(item.id)));
-    await Promise.all(snapshot.items.map(item => ItemsApi.create(item)));
+
+    for (const item of snapshot.items) {
+        const created = await ItemsApi.create({
+            title: item.title,
+            summary: item.summary,
+            status: item.status,
+        });
+
+        for (const step of item.steps ?? []) {
+            await ItemsApi.createStep(created.id, step);
+        }
+    }
 
     if (snapshot.workspace_note.trim()) {
         await AppSettingsApi.save(WORKSPACE_NOTE_KEY, snapshot.workspace_note.trim());

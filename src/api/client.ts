@@ -3,11 +3,14 @@ import { BrowserPreviewApi, isBrowserPreview } from './browserPreview';
 import type {
     AppInfo,
     CreateTemplateItemInput,
+    CreateTemplateItemStepInput,
     TemplateItem,
     TemplateItemFilters,
     TemplateItemPage,
+    TemplateItemStep,
     TemplateOverview,
     UpdateTemplateItemInput,
+    UpdateTemplateItemStepInput,
 } from './types';
 
 const normalizeFilters = (filters?: TemplateItemFilters) => ({
@@ -55,6 +58,34 @@ export const ItemsApi = {
             return BrowserPreviewApi.delete(id);
         }
         return invoke<void>('delete_template_item', { id });
+    },
+
+    async getSteps(itemId: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getSteps(itemId);
+        }
+        return invoke<TemplateItemStep[]>('get_template_item_steps', { itemId });
+    },
+
+    async createStep(itemId: string, step: CreateTemplateItemStepInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.createStep(itemId, step);
+        }
+        return invoke<TemplateItemStep>('create_template_item_step', { itemId, step });
+    },
+
+    async updateStep(id: string, data: UpdateTemplateItemStepInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.updateStep(id, data);
+        }
+        return invoke<TemplateItemStep>('update_template_item_step', { id, data });
+    },
+
+    async deleteStep(id: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.deleteStep(id);
+        }
+        return invoke<void>('delete_template_item_step', { id });
     },
 };
 

@@ -1,17 +1,20 @@
+import { useState } from 'react';
 import { Download, FileDown, Plus, RefreshCcw, Upload } from 'lucide-react';
+import type { TemplateItem } from '../../api/types';
 import { ItemsApi } from '../../api/client';
 import { downloadTemplateItemsCsv, downloadTemplateItemsCsvSample } from './export/csv';
 import { TemplateItemEditor } from './components/TemplateItemEditor';
+import { TemplateItemStepsModal } from './components/TemplateItemStepsModal';
 import { TemplateItemsFilters } from './components/TemplateItemsFilters';
 import { TemplateItemsImportModal } from './components/TemplateItemsImportModal';
 import { TemplateItemsList } from './components/TemplateItemsList';
 import { templateItemsCopy } from './constants';
 import { useTemplateItemsController } from './useTemplateItemsController';
-import { useState } from 'react';
 
 export function TemplateItemsModule() {
     const controller = useTemplateItemsController();
     const [isImportOpen, setIsImportOpen] = useState(false);
+    const [stepsItem, setStepsItem] = useState<TemplateItem | null>(null);
 
     return (
         <section className="flex flex-col gap-6">
@@ -78,6 +81,7 @@ export function TemplateItemsModule() {
                     controller.setEditingItem(item);
                     controller.setIsModalOpen(true);
                 }}
+                onOpenSteps={item => setStepsItem(item)}
                 onDelete={controller.handleDelete}
                 onPreviousPage={controller.goToPreviousPage}
                 onNextPage={controller.goToNextPage}
@@ -91,6 +95,13 @@ export function TemplateItemsModule() {
                     controller.setEditingItem(null);
                 }}
                 onSave={controller.handleSaveItem}
+            />
+
+            <TemplateItemStepsModal
+                isOpen={Boolean(stepsItem)}
+                item={stepsItem}
+                onClose={() => setStepsItem(null)}
+                onRefreshParent={controller.refreshPage}
             />
 
             <TemplateItemsImportModal

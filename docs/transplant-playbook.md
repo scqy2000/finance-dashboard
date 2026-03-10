@@ -60,7 +60,19 @@ Backend:
 - commands validate and map inputs
 - repositories own SQL
 
-### 4. Pull advanced reference code only when needed
+### 4. Reuse the associated-entity sample before designing your own complex flow
+
+The runtime now includes a parent-child sample:
+
+- parent records live in `template_items`
+- child records live in `template_item_steps`
+- parent list queries expose aggregate counts
+- child writes bump parent timestamps and refresh parent views
+- snapshot export/import preserves the hierarchy
+
+If the target app has related entities, start by cloning this sample instead of inventing a fresh mutation flow.
+
+### 5. Pull advanced reference code only when needed
 
 Use:
 
@@ -75,6 +87,7 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - browser preview opens with example data
 - theme changes persist
 - one record can be created, edited, deleted
+- one child record can be created and the parent aggregate updates
 - CSV import/export works for the example entity
 - snapshot export/import restores data and appearance
 - pagination still works
@@ -88,4 +101,5 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - mixing SQL back into Tauri command files
 - letting page files grow into feature controllers
 - keeping one global store after multiple domains appear
+- computing parent aggregate state only in the client instead of persisting child writes correctly
 - adding secret handling without a fresh threat model

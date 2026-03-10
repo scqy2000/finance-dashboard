@@ -10,7 +10,11 @@ pub fn load_setting(connection: &Connection, key: &str) -> Result<Option<String>
         .optional()
 }
 
-pub fn save_setting(connection: &Connection, key: &str, value: &str) -> Result<(), rusqlite::Error> {
+pub fn save_setting(
+    connection: &Connection,
+    key: &str,
+    value: &str,
+) -> Result<(), rusqlite::Error> {
     connection.execute(
         r#"
         INSERT INTO app_settings (key, value, updated_at)

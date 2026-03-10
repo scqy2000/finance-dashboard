@@ -7,6 +7,19 @@ export interface TemplateItem {
     status: TemplateItemStatus;
     created_at: string;
     updated_at: string;
+    total_steps?: number;
+    completed_steps?: number;
+}
+
+export type TemplateItemStepStatus = 'pending' | 'done';
+
+export interface TemplateItemStep {
+    id: string;
+    item_id: string;
+    title: string;
+    status: TemplateItemStepStatus;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface TemplateItemFilters {
@@ -42,6 +55,16 @@ export interface UpdateTemplateItemInput {
     status?: TemplateItemStatus;
 }
 
+export interface CreateTemplateItemStepInput {
+    title: string;
+    status: TemplateItemStepStatus;
+}
+
+export interface UpdateTemplateItemStepInput {
+    title?: string;
+    status?: TemplateItemStepStatus;
+}
+
 export interface ImportFailure<T> {
     index: number;
     reason: string;
@@ -63,7 +86,7 @@ export interface AppInfo {
 
 export interface TemplateAppSnapshot {
     exported_at: string;
-    items: CreateTemplateItemInput[];
+    items: Array<CreateTemplateItemInput & { steps?: CreateTemplateItemStepInput[] }>;
     workspace_note: string;
     appearance: {
         appName: string;
