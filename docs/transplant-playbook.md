@@ -22,11 +22,19 @@ Start from these stable areas:
 
 ### 1. Rename product metadata
 
-Update:
+Run:
+
+- `pwsh ./scripts/rename-template.ps1 -AppName "Your App" -PackageName "your-app" -Identifier "com.example.yourapp" -DryRun`
+
+Then run it again without `-DryRun`.
+
+It updates:
 
 - `package.json`
 - `src-tauri/Cargo.toml`
 - `src-tauri/tauri.conf.json`
+- `src/utils/preferences.ts`
+- `README.md`
 
 ### 2. Replace the example entity
 
@@ -63,11 +71,13 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 ## Default acceptance checklist
 
 - app starts
+- browser preview opens with example data
 - theme changes persist
 - one record can be created, edited, deleted
 - pagination still works
 - `npm run build:fe` passes
 - `cargo test --manifest-path src-tauri/Cargo.toml` passes
+- `npm run test:e2e` passes
 
 ## Common failure modes
 

@@ -86,6 +86,7 @@ export function TemplateItemEditor({ isOpen, item, onClose, onSave }: TemplateIt
                         Title
                         <input
                             type="text"
+                            data-testid="template-item-title-input"
                             value={form.title}
                             onChange={event => setForm(prev => ({ ...prev, title: event.target.value }))}
                             className="rounded-[14px] border border-[var(--border-light)] bg-white/75 px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
@@ -98,6 +99,7 @@ export function TemplateItemEditor({ isOpen, item, onClose, onSave }: TemplateIt
                     <label className="flex flex-col gap-2 text-sm text-[var(--text-secondary)]">
                         Summary
                         <textarea
+                            data-testid="template-item-summary-input"
                             value={form.summary}
                             onChange={event => setForm(prev => ({ ...prev, summary: event.target.value }))}
                             className="min-h-[120px] rounded-[14px] border border-[var(--border-light)] bg-white/75 px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
@@ -109,6 +111,7 @@ export function TemplateItemEditor({ isOpen, item, onClose, onSave }: TemplateIt
                     <label className="flex flex-col gap-2 text-sm text-[var(--text-secondary)]">
                         Status
                         <select
+                            data-testid="template-item-status-select"
                             value={form.status}
                             onChange={event => setForm(prev => ({ ...prev, status: event.target.value as CreateTemplateItemInput['status'] }))}
                             className="rounded-[14px] border border-[var(--border-light)] bg-white/75 px-4 py-3 text-sm text-[var(--text-primary)] outline-none focus:border-[var(--color-primary)]"
@@ -124,6 +127,7 @@ export function TemplateItemEditor({ isOpen, item, onClose, onSave }: TemplateIt
                             Cancel
                         </button>
                         <button type="submit" className="btn-primary" disabled={saving || !form.title.trim()}>
+                            
                             {saving ? 'Saving...' : isEditing ? 'Save changes' : 'Create item'}
                         </button>
                     </div>

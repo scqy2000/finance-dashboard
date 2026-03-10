@@ -71,6 +71,7 @@ export function Sidebar({ currentTab, onChangeTab }: SidebarProps) {
                             key={item.id}
                             type="button"
                             onClick={() => onChangeTab(item.id)}
+                            data-testid={`nav-${item.id}`}
                             className={`motion-hover-lift flex items-start gap-3 rounded-[18px] px-4 py-3 text-left border ${
                                 isActive
                                     ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)] text-[var(--text-primary)]'

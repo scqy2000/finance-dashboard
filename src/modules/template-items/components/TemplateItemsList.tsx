@@ -34,7 +34,7 @@ export function TemplateItemsList({
     onNextPage,
 }: TemplateItemsListProps) {
     return (
-        <article className="glass-panel overflow-hidden">
+        <article className="glass-panel overflow-hidden" data-testid="template-items-list">
             <div className="flex items-center justify-between border-b border-[var(--border-light)] px-5 py-4">
                 <div>
                     <div className="text-sm font-semibold text-[var(--text-primary)]">Paginated records</div>
@@ -100,7 +100,7 @@ function TemplateItemsListRow({ item, onEdit, onDelete }: TemplateItemsListRowPr
     const badgeClass = templateItemStatusBadgeMap[item.status as TemplateItemStatus];
 
     return (
-        <div className="flex flex-col gap-4 px-5 py-5 xl:flex-row xl:items-start xl:justify-between">
+        <div className="flex flex-col gap-4 px-5 py-5 xl:flex-row xl:items-start xl:justify-between" data-testid={`template-item-row-${item.id}`}>
             <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-lg font-semibold text-[var(--text-primary)]">{item.title}</h2>
@@ -119,10 +119,10 @@ function TemplateItemsListRow({ item, onEdit, onDelete }: TemplateItemsListRowPr
             </div>
 
             <div className="flex gap-3 xl:shrink-0">
-                <button type="button" className="btn-secondary" onClick={() => onEdit(item)}>
+                <button type="button" className="btn-secondary" data-testid={`template-item-edit-${item.id}`} onClick={() => onEdit(item)}>
                     Edit
                 </button>
-                <button type="button" className="btn-secondary" onClick={() => void onDelete(item)}>
+                <button type="button" className="btn-secondary" data-testid={`template-item-delete-${item.id}`} onClick={() => void onDelete(item)}>
                     Delete
                 </button>
             </div>

@@ -23,3 +23,5 @@ src-tauri/**/*.pdb
 .vscode/
 
 devfe.log
+test-results/
+playwright-report/

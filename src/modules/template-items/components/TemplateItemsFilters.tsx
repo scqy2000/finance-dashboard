@@ -18,6 +18,7 @@ export function TemplateItemsFilters({ filters, onChange, onApply }: TemplateIte
                         <Search size={16} className="text-[var(--text-tertiary)]" />
                         <input
                             type="text"
+                            data-testid="template-items-search-input"
                             value={filters.query ?? ''}
                             onChange={event => onChange({ ...filters, query: event.target.value })}
                             className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none"

@@ -26,6 +26,7 @@ export function TemplateItemsModule() {
                     <button
                         type="button"
                         className="btn-primary"
+                        data-testid="template-items-create-button"
                         onClick={() => {
                             controller.setEditingItem(null);
                             controller.setIsModalOpen(true);

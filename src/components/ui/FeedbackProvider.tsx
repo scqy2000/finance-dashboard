@@ -79,10 +79,10 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         <h3 className="text-base font-semibold">{confirmState.title}</h3>
                         <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap">{confirmState.message}</p>
                         <div className="flex justify-end gap-3 pt-2">
-                            <button type="button" className="btn-secondary py-2 px-4 border border-[var(--border-light)] rounded-[var(--radius-md)] text-[13px] bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-pointer" onClick={() => settleConfirm(false)}>
+                            <button type="button" data-testid="confirm-cancel" className="btn-secondary py-2 px-4 border border-[var(--border-light)] rounded-[var(--radius-md)] text-[13px] bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-pointer" onClick={() => settleConfirm(false)}>
                                 Cancel
                             </button>
-                            <button type="button" className="btn-primary py-2 px-4 border-none rounded-[var(--radius-md)] text-[13px] bg-[var(--color-primary)] text-white cursor-pointer" onClick={() => settleConfirm(true)}>
+                            <button type="button" data-testid="confirm-accept" className="btn-primary py-2 px-4 border-none rounded-[var(--radius-md)] text-[13px] bg-[var(--color-primary)] text-white cursor-pointer" onClick={() => settleConfirm(true)}>
                                 Confirm
                             </button>
                         </div>

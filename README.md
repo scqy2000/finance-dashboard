@@ -57,7 +57,17 @@ npm run dev
 npm run build:fe
 cargo check --manifest-path src-tauri/Cargo.toml
 cargo test --manifest-path src-tauri/Cargo.toml
+npm run test:e2e
 ```
+
+## Browser preview mode
+
+If the app runs outside Tauri, the frontend now falls back to a localStorage-backed browser preview mode.
+
+That mode exists for two reasons:
+
+- fast UI review without starting the desktop runtime
+- stable Playwright smoke tests for the template CRUD loop
 
 ## Starting a new app from this template
 
@@ -68,3 +78,4 @@ cargo test --manifest-path src-tauri/Cargo.toml
 5. Update `docs/reference-map.md` to document what your project now treats as core vs optional.
 6. Use `docs/template-items-module.md` when cloning the example CRUD module into a real feature.
 7. Follow `docs/transplant-playbook.md` if you want the shortest safe migration path.
+8. Run `scripts/rename-template.ps1` to rename product metadata in one pass.

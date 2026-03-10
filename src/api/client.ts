@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { BrowserPreviewApi, isBrowserPreview } from './browserPreview';
 import type {
     AppInfo,
     CreateTemplateItemInput,
@@ -16,10 +17,16 @@ const normalizeFilters = (filters?: TemplateItemFilters) => ({
 
 export const ItemsApi = {
     async getAll(limit?: number) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getAll(limit);
+        }
         return invoke<TemplateItem[]>('get_template_items', { limit });
     },
 
     async getPage(page = 1, pageSize = 12, filters?: TemplateItemFilters) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getPage(page, pageSize, filters);
+        }
         const normalized = normalizeFilters(filters);
         return invoke<TemplateItemPage>('get_template_items_page', {
             page,
@@ -30,40 +37,64 @@ export const ItemsApi = {
     },
 
     async create(data: CreateTemplateItemInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.create(data);
+        }
         return invoke<TemplateItem>('create_template_item', { item: data });
     },
 
     async update(id: string, data: UpdateTemplateItemInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.update(id, data);
+        }
         return invoke<TemplateItem>('update_template_item', { id, data });
     },
 
     async delete(id: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.delete(id);
+        }
         return invoke<void>('delete_template_item', { id });
     },
 };
 
 export const OverviewApi = {
     async get() {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getOverview();
+        }
         return invoke<TemplateOverview>('get_template_overview');
     },
 };
 
 export const AppSettingsApi = {
     async load(key: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.loadSetting(key);
+        }
         return invoke<string | null>('load_app_setting', { key });
     },
 
     async save(key: string, value: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.saveSetting(key, value);
+        }
         return invoke<void>('save_app_setting', { key, value });
     },
 
     async clear(key: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.clearSetting(key);
+        }
         return invoke<void>('clear_app_setting', { key });
     },
 };
 
 export const SystemApi = {
     async getInfo() {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getInfo();
+        }
         return invoke<AppInfo>('get_app_info');
     },
 };
