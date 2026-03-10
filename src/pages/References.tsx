@@ -31,6 +31,38 @@ const sourcePaths = [
     'reference/finance-dashboard-src',
     'reference/finance-dashboard-src-tauri',
     'docs/reference-map.md',
+    'docs/reference-index.md',
+    'docs/template-items-module.md',
+];
+
+const themedReferenceGroups = [
+    {
+        title: 'Shell and feedback',
+        description: 'Layout shell, navigation, title bar rhythm, feedback provider and settings surfaces.',
+        paths: [
+            'reference/finance-dashboard-src/App.tsx',
+            'reference/finance-dashboard-src/components/Sidebar.tsx',
+            'reference/finance-dashboard-src/components/ui/FeedbackProvider.tsx',
+        ],
+    },
+    {
+        title: 'Import and list workflows',
+        description: 'Higher-complexity list pages, action menus and CSV parsing flows.',
+        paths: [
+            'reference/finance-dashboard-src/pages/Transactions.tsx',
+            'reference/finance-dashboard-src/components/CsvImportModal.tsx',
+            'reference/finance-dashboard-src/components/csv/parser.ts',
+        ],
+    },
+    {
+        title: 'Backend orchestration',
+        description: 'Migration history, multi-entity writes and the old command organization.',
+        paths: [
+            'reference/finance-dashboard-src-tauri/commands.rs',
+            'reference/finance-dashboard-src-tauri/db.rs',
+            'reference/finance-dashboard-src-tauri/lib.rs',
+        ],
+    },
 ];
 
 export function References() {
@@ -71,6 +103,20 @@ export function References() {
                     ))}
                 </div>
             </article>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+                {themedReferenceGroups.map(group => (
+                    <article key={group.title} className="glass-panel p-5">
+                        <h2 className="text-lg font-semibold">{group.title}</h2>
+                        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{group.description}</p>
+                        <ul className="mt-4 space-y-2 text-xs leading-5 text-[var(--text-secondary)]">
+                            {group.paths.map(path => (
+                                <li key={path}>{path}</li>
+                            ))}
+                        </ul>
+                    </article>
+                ))}
+            </div>
         </section>
     );
 }

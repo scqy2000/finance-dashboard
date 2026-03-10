@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { CreateTemplateItemInput, TemplateItem } from '../api/types';
+import type { CreateTemplateItemInput, TemplateItem } from '../../../api/types';
 
-type ItemModalProps = {
+type TemplateItemEditorProps = {
     isOpen: boolean;
     item: TemplateItem | null;
     onClose: () => void;
@@ -14,7 +14,7 @@ const defaultForm: CreateTemplateItemInput = {
     status: 'draft',
 };
 
-export function ItemModal({ isOpen, item, onClose, onSave }: ItemModalProps) {
+export function TemplateItemEditor({ isOpen, item, onClose, onSave }: TemplateItemEditorProps) {
     const [form, setForm] = useState<CreateTemplateItemInput>(defaultForm);
     const [saving, setSaving] = useState(false);
     const isEditing = useMemo(() => Boolean(item), [item]);

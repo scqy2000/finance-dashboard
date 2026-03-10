@@ -25,6 +25,8 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - `reference/finance-dashboard-src/`: original finance frontend kept as reference material
 - `reference/finance-dashboard-src-tauri/`: original finance Rust backend kept as reference material
 - `docs/reference-map.md`: extraction guidance for what to reuse directly and what to adapt first
+- `docs/reference-index.md`: reference files grouped by theme
+- `docs/template-items-module.md`: how to copy and reshape the example CRUD module
 
 ## Runtime contracts kept on purpose
 
@@ -63,3 +65,4 @@ cargo test --manifest-path src-tauri/Cargo.toml
 3. Keep the store and API boundary shape until you actually need more granular invalidation.
 4. Pull optional ideas from `reference/` only after the new domain model is stable.
 5. Update `docs/reference-map.md` to document what your project now treats as core vs optional.
+6. Use `docs/template-items-module.md` when cloning the example CRUD module into a real feature.
