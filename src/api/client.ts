@@ -41,6 +41,13 @@ export const ItemsApi = {
         });
     },
 
+    async getById(id: string) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.getById(id);
+        }
+        return invoke<TemplateItem>('get_template_item', { id });
+    },
+
     async create(data: CreateTemplateItemInput) {
         if (isBrowserPreview()) {
             return BrowserPreviewApi.create(data);
@@ -145,4 +152,5 @@ export const SystemApi = {
         return invoke<AppInfo>('get_app_info');
     },
 };
+
 

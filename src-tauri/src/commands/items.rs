@@ -111,6 +111,16 @@ pub fn get_template_items_page(
 }
 
 #[tauri::command]
+pub fn get_template_item(id: String, state: State<'_, DbState>) -> Result<TemplateItem, String> {
+    let connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    map_item_not_found(items_repository::fetch_item_by_id(&connection, &id))
+}
+
+#[tauri::command]
 pub fn create_template_item(
     item: CreateTemplateItemInput,
     state: State<'_, DbState>,

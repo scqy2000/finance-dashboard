@@ -56,7 +56,7 @@ test.describe('template smoke flow', () => {
         await expect(itemsPage.rowByTitle(importTitle)).toHaveCount(0);
     });
 
-    test('can manage child steps and refresh parent aggregates in browser preview mode', async ({ page }) => {
+    test('can open detail view and manage child steps in browser preview mode', async ({ page }) => {
         const itemsPage = new TemplateItemsPage(page);
         const itemTitle = `Parent item ${Date.now()}`;
         const stepTitle = `Child step ${Date.now()}`;
@@ -65,14 +65,14 @@ test.describe('template smoke flow', () => {
         await itemsPage.openItems();
         await itemsPage.createItem(itemTitle, 'Parent-child sample for transplant validation.');
         await itemsPage.search(itemTitle);
-        await itemsPage.expectRowSteps(itemTitle, 'Steps 0/0 done');
-
-        await itemsPage.openSteps(itemTitle);
-        await itemsPage.addStep(stepTitle, 'done');
-        await itemsPage.expectStepSummary('1/1 done');
-        await itemsPage.closeSteps();
+        await itemsPage.openDetail(itemTitle);
+        await itemsPage.addStepInDetail(stepTitle, 'done');
+        await itemsPage.expectDetailStepSummary('1/1 done');
+        await itemsPage.setDetailStatus('archived');
+        await itemsPage.goBackFromDetail();
 
         await itemsPage.expectRowSteps(itemTitle, 'Steps 1/1 done');
+        await itemsPage.expectRowStatus(itemTitle, 'archived');
     });
 
     test('can batch archive and batch delete selected items in browser preview mode', async ({ page }) => {

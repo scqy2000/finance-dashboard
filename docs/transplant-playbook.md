@@ -60,7 +60,7 @@ Backend:
 - commands validate and map inputs
 - repositories own SQL
 
-### 4. Reuse the associated-entity sample before designing your own complex flow
+### 4. Reuse the associated-entity and detail sample before designing your own complex flow
 
 The runtime now includes a parent-child sample:
 
@@ -69,6 +69,7 @@ The runtime now includes a parent-child sample:
 - parent list queries expose aggregate counts
 - child writes bump parent timestamps and refresh parent views
 - snapshot export/import preserves the hierarchy
+- detail view keeps parent and child writes in one user-facing surface
 
 If the target app has related entities, start by cloning this sample instead of inventing a fresh mutation flow.
 
@@ -129,3 +130,4 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - putting batch selection state into global runtime before it actually needs to be shared
 - keeping multiple live import rollback handles without a clear invalidation rule
 - adding secret handling without a fresh threat model
+

@@ -28,6 +28,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::items::get_template_items,
             commands::items::get_template_items_page,
+            commands::items::get_template_item,
             commands::items::create_template_item,
             commands::items::update_template_item,
             commands::items::delete_template_item,

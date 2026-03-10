@@ -11,8 +11,8 @@ type TemplateItemsListProps = {
     allVisibleSelected: boolean;
     onToggleSelected: (itemId: string) => void;
     onToggleSelectAllVisible: () => void;
+    onOpenDetail: (item: TemplateItem) => void;
     onEdit: (item: TemplateItem) => void;
-    onOpenSteps: (item: TemplateItem) => void;
     onDelete: (item: TemplateItem) => Promise<void>;
     onPreviousPage: () => Promise<void>;
     onNextPage: () => Promise<void>;
@@ -46,8 +46,8 @@ export function TemplateItemsList({
     allVisibleSelected,
     onToggleSelected,
     onToggleSelectAllVisible,
+    onOpenDetail,
     onEdit,
-    onOpenSteps,
     onDelete,
     onPreviousPage,
     onNextPage,
@@ -96,8 +96,8 @@ export function TemplateItemsList({
                             item={item}
                             isSelected={selectedItemIds.includes(item.id)}
                             onToggleSelected={onToggleSelected}
+                            onOpenDetail={onOpenDetail}
                             onEdit={onEdit}
-                            onOpenSteps={onOpenSteps}
                             onDelete={onDelete}
                         />
                     ))}
@@ -137,17 +137,17 @@ type TemplateItemsListRowProps = {
     item: TemplateItem;
     isSelected: boolean;
     onToggleSelected: (itemId: string) => void;
+    onOpenDetail: (item: TemplateItem) => void;
     onEdit: (item: TemplateItem) => void;
-    onOpenSteps: (item: TemplateItem) => void;
     onDelete: (item: TemplateItem) => Promise<void>;
 };
 
-function TemplateItemsListRow({ item, isSelected, onToggleSelected, onEdit, onOpenSteps, onDelete }: TemplateItemsListRowProps) {
+function TemplateItemsListRow({ item, isSelected, onToggleSelected, onOpenDetail, onEdit, onDelete }: TemplateItemsListRowProps) {
     const badgeClass = templateItemStatusBadgeMap[item.status as TemplateItemStatus];
 
     return (
         <div className="flex flex-col gap-4 px-5 py-5 xl:flex-row xl:items-start xl:justify-between" data-testid={`template-item-row-${item.id}`}>
-            <div className="flex gap-4 min-w-0 flex-1">
+            <div className="flex min-w-0 flex-1 gap-4">
                 <label className="mt-1 flex shrink-0 items-start">
                     <input
                         type="checkbox"
@@ -178,8 +178,8 @@ function TemplateItemsListRow({ item, isSelected, onToggleSelected, onEdit, onOp
             </div>
 
             <div className="flex flex-wrap gap-3 xl:shrink-0">
-                <button type="button" className="btn-secondary" data-testid={`template-item-steps-${item.id}`} onClick={() => onOpenSteps(item)}>
-                    Steps
+                <button type="button" className="btn-secondary" data-testid={`template-item-open-${item.id}`} onClick={() => onOpenDetail(item)}>
+                    Open
                 </button>
                 <button type="button" className="btn-secondary" data-testid={`template-item-edit-${item.id}`} onClick={() => onEdit(item)}>
                     Edit

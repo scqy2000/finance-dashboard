@@ -7,7 +7,7 @@
 - State contract: `init()` once, `refreshAll()` after writes, module-local load/add/update/delete actions
 - SQLite bootstrap: local file initialization, `PRAGMA user_version`, WAL mode, and simple seeding
 - Backend structure: split command modules by domain and keep system info separate from business logic
-- Associated-entity starter: parent items, child steps, aggregate counts, and transactional child writes in runtime core
+- Associated-entity starter: parent items, detail surface, child steps, aggregate counts, and transactional child writes in runtime core
 - Batch-action starter: page-scoped selection, batch status update, and transactional batch delete in runtime core
 - Import-rollback starter: last successful import handle plus explicit invalidation after later writes
 
@@ -18,7 +18,7 @@
 - Cross-table transaction logic from `reference/finance-dashboard-src-tauri/commands.rs`
 - AI context assembly and chat workflows from the finance reference frontend
 
-The template runtime now includes a generic CSV import path, one parent-child flow, one batch-action flow, and one last-import undo flow. Treat them as starter implementations, not finished frameworks.
+The template runtime now includes a generic CSV import path, one parent-child detail flow, one batch-action flow, and one last-import undo flow. Treat them as starter implementations, not finished frameworks.
 
 ## Do not reuse blindly
 
@@ -39,3 +39,4 @@ The template runtime now includes a generic CSV import path, one parent-child fl
 
 - `reference/finance-dashboard-src`
 - `reference/finance-dashboard-src-tauri`
+

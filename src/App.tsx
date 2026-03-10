@@ -23,7 +23,7 @@ const titleMap: Record<NavigationTab, { title: string; description: string; icon
     },
     items: {
         title: 'Items',
-        description: 'Minimal CRUD loop with pagination.',
+        description: 'CRUD, detail flow and child-record management.',
         icon: Blocks,
     },
     references: {
@@ -112,3 +112,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+

@@ -19,7 +19,7 @@ const navigationItems: Array<{
     icon: typeof LayoutDashboard;
 }> = [
     { id: 'overview', label: 'Overview', description: 'Shell, state and runtime snapshot', icon: LayoutDashboard },
-    { id: 'items', label: 'Items', description: 'Example CRUD with pagination', icon: Blocks },
+    { id: 'items', label: 'Items', description: 'Example CRUD, detail and child records', icon: Blocks },
     { id: 'references', label: 'References', description: 'Reusable and optional modules', icon: FileStack },
     { id: 'settings', label: 'Settings', description: 'Theme, branding and persisted prefs', icon: Settings },
 ];
@@ -101,3 +101,4 @@ export function Sidebar({ currentTab, onChangeTab }: SidebarProps) {
         </aside>
     );
 }
+

@@ -244,6 +244,14 @@ export const BrowserPreviewApi = {
         };
     },
 
+    async getById(id: string) {
+        const item = readPreviewItems().find(entry => entry.id === id);
+        if (!item) {
+            throw new Error('item not found');
+        }
+        return item;
+    },
+
     async create(data: CreateTemplateItemInput) {
         const items = readPreviewItemsRaw();
         const timestamp = new Date().toISOString();
@@ -422,3 +430,4 @@ export const BrowserPreviewApi = {
 };
 
 export const isBrowserPreview = () => typeof window !== 'undefined' && !('__TAURI_INTERNALS__' in window);
+

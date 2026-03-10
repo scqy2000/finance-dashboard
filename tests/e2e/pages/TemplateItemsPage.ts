@@ -9,10 +9,10 @@ export class TemplateItemsPage {
     readonly titleInput: Locator;
     readonly summaryInput: Locator;
     readonly statusSelect: Locator;
-    readonly stepTitleInput: Locator;
-    readonly stepStatusSelect: Locator;
-    readonly stepSaveButton: Locator;
     readonly selectAllCheckbox: Locator;
+    readonly detailStepTitleInput: Locator;
+    readonly detailStepStatusSelect: Locator;
+    readonly detailStepSaveButton: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -23,10 +23,10 @@ export class TemplateItemsPage {
         this.titleInput = page.getByTestId('template-item-title-input');
         this.summaryInput = page.getByTestId('template-item-summary-input');
         this.statusSelect = page.getByTestId('template-item-status-select');
-        this.stepTitleInput = page.getByTestId('template-item-step-title-input');
-        this.stepStatusSelect = page.getByTestId('template-item-step-status-select');
-        this.stepSaveButton = page.getByTestId('template-item-step-save-button');
         this.selectAllCheckbox = page.getByTestId('template-items-select-all');
+        this.detailStepTitleInput = page.getByTestId('template-item-detail-step-title');
+        this.detailStepStatusSelect = page.getByTestId('template-item-detail-step-status');
+        this.detailStepSaveButton = page.getByTestId('template-item-detail-step-save');
     }
 
     async goto() {
@@ -70,29 +70,31 @@ export class TemplateItemsPage {
         await this.page.getByRole('button', { name: 'Done' }).click();
     }
 
-    async openSteps(title: string) {
+    async openDetail(title: string) {
         const row = this.rowByTitle(title);
-        await row.getByRole('button', { name: 'Steps' }).click();
-        await expect(this.page.getByText(title).nth(1)).toBeVisible();
+        await row.getByRole('button', { name: 'Open' }).click();
+        await expect(this.page.getByTestId('template-item-detail-view')).toBeVisible();
+        await expect(this.page.getByRole('heading', { name: title })).toBeVisible();
     }
 
-    async addStep(title: string, status: 'pending' | 'done' = 'pending') {
-        await this.stepTitleInput.fill(title);
-        await this.stepStatusSelect.selectOption(status);
-        await this.stepSaveButton.click();
-        await expect(this.page.getByTestId('template-item-steps-list')).toContainText(title);
+    async goBackFromDetail() {
+        await this.page.getByTestId('template-item-detail-back').click();
+        await expect(this.page.getByTestId('template-items-list')).toBeVisible();
     }
 
-    async expectStepSummary(summary: string) {
-        await expect(this.page.getByTestId('template-item-steps-summary')).toHaveText(summary);
+    async addStepInDetail(title: string, status: 'pending' | 'done' = 'pending') {
+        await this.detailStepTitleInput.fill(title);
+        await this.detailStepStatusSelect.selectOption(status);
+        await this.detailStepSaveButton.click();
+        await expect(this.page.getByTestId('template-item-detail-step-list')).toContainText(title);
     }
 
-    async closeSteps() {
-        await this.page.getByRole('button', { name: 'Close' }).nth(0).click();
+    async expectDetailStepSummary(summary: string) {
+        await expect(this.page.getByTestId('template-item-detail-step-summary')).toHaveText(summary);
     }
 
-    async expectRowSteps(title: string, summary: string) {
-        await expect(this.rowByTitle(title).getByText(summary)).toBeVisible();
+    async setDetailStatus(status: 'draft' | 'active' | 'archived') {
+        await this.page.getByTestId(`template-item-detail-status-${status}`).click();
     }
 
     async selectItem(title: string) {
@@ -115,6 +117,10 @@ export class TemplateItemsPage {
 
     async expectImportUndoBanner() {
         await expect(this.page.getByTestId('template-items-import-undo-banner')).toBeVisible();
+    }
+
+    async expectRowSteps(title: string, summary: string) {
+        await expect(this.rowByTitle(title).getByText(summary)).toBeVisible();
     }
 
     async expectRowStatus(title: string, status: 'draft' | 'active' | 'archived') {
