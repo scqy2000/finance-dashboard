@@ -42,6 +42,19 @@ export interface UpdateTemplateItemInput {
     status?: TemplateItemStatus;
 }
 
+export interface ImportFailure<T> {
+    index: number;
+    reason: string;
+    row?: T;
+    raw?: string[];
+}
+
+export interface ImportResult<T> {
+    success: number;
+    failed: number;
+    failedRows?: Array<ImportFailure<T>>;
+}
+
 export interface AppInfo {
     version: string;
     userData: string;

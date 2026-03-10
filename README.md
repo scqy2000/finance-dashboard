@@ -9,7 +9,7 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - Rust command modules split by concern instead of one monolithic file
 - SQLite initialization, lightweight `user_version` migrations, WAL mode, and one seeded example entity
 - Theme tokens, local appearance preferences, toast and confirm feedback primitives
-- One complete CRUD example with pagination and a persisted app setting
+- One complete CRUD example with pagination, CSV import, and a persisted app setting
 
 ## What is not in template core
 
@@ -40,7 +40,7 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 ## Template pages
 
 - `Overview`: runtime status and template intent
-- `Items`: example CRUD entity with pagination
+- `Items`: example CRUD entity with pagination and CSV import
 - `References`: direct reuse vs optional reference material
 - `Settings`: local appearance settings plus one SQLite-backed note
 

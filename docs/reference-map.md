@@ -15,6 +15,8 @@
 - Cross-table transaction logic from `reference/finance-dashboard-src-tauri/commands.rs`
 - AI context assembly and chat workflows from the finance reference frontend
 
+The template runtime now includes a generic CSV import path for the example entity. Treat it as a starter implementation, not a finished data ingestion framework.
+
 ## Do not reuse blindly
 
 - Finance domain names, schema, seed data, and UI copy

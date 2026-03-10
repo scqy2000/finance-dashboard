@@ -15,6 +15,7 @@ export function useTemplateItemsController() {
     const currentPageSize = useTemplateItemsStore(state => state.currentPageSize);
     const loadItemsPage = useTemplateItemsStore(state => state.loadItemsPage);
     const addItem = useTemplateItemsStore(state => state.addItem);
+    const importItems = useTemplateItemsStore(state => state.importItems);
     const updateItem = useTemplateItemsStore(state => state.updateItem);
     const deleteItem = useTemplateItemsStore(state => state.deleteItem);
 
@@ -90,6 +91,7 @@ export function useTemplateItemsController() {
         setIsModalOpen,
         setEditingItem,
         handleApplyFilters,
+        handleImportRows: importItems,
         handleSaveItem,
         handleDelete,
         refreshPage: () => loadItemsPage(currentPage, currentPageSize, currentFilters),

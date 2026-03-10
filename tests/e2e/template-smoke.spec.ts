@@ -22,4 +22,18 @@ test.describe('template smoke flow', () => {
         await itemsPage.deleteItem(title);
         await expect(itemsPage.rowByTitle(title)).toHaveCount(0);
     });
+
+    test('can import template items from csv in browser preview mode', async ({ page }) => {
+        const itemsPage = new TemplateItemsPage(page);
+        const importTitle = `Imported item ${Date.now()}`;
+
+        await itemsPage.goto();
+        await itemsPage.openItems();
+        await itemsPage.importCsv(
+            'template-items.csv',
+            `title,summary,status\n${importTitle},Imported through csv,active`,
+        );
+        await itemsPage.search(importTitle);
+        await expect(itemsPage.rowByTitle(importTitle)).toBeVisible();
+    });
 });

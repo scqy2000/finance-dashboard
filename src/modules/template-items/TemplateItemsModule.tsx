@@ -1,12 +1,15 @@
-import { Plus, RefreshCcw } from 'lucide-react';
+import { Plus, RefreshCcw, Upload } from 'lucide-react';
 import { TemplateItemEditor } from './components/TemplateItemEditor';
 import { TemplateItemsFilters } from './components/TemplateItemsFilters';
+import { TemplateItemsImportModal } from './components/TemplateItemsImportModal';
 import { TemplateItemsList } from './components/TemplateItemsList';
 import { templateItemsCopy } from './constants';
 import { useTemplateItemsController } from './useTemplateItemsController';
+import { useState } from 'react';
 
 export function TemplateItemsModule() {
     const controller = useTemplateItemsController();
+    const [isImportOpen, setIsImportOpen] = useState(false);
 
     return (
         <section className="flex flex-col gap-6">
@@ -22,6 +25,10 @@ export function TemplateItemsModule() {
                     <button type="button" className="btn-secondary" onClick={() => void controller.refreshPage()}>
                         <RefreshCcw size={16} />
                         Refresh
+                    </button>
+                    <button type="button" className="btn-secondary" data-testid="template-items-import-button" onClick={() => setIsImportOpen(true)}>
+                        <Upload size={16} />
+                        Import CSV
                     </button>
                     <button
                         type="button"
@@ -67,6 +74,12 @@ export function TemplateItemsModule() {
                     controller.setEditingItem(null);
                 }}
                 onSave={controller.handleSaveItem}
+            />
+
+            <TemplateItemsImportModal
+                isOpen={isImportOpen}
+                onClose={() => setIsImportOpen(false)}
+                onImport={controller.handleImportRows}
             />
         </section>
     );

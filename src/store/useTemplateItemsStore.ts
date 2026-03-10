@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { ItemsApi } from '../api/client';
 import type {
     CreateTemplateItemInput,
+    ImportResult,
     TemplateItemFilters,
     TemplateItemPage,
     UpdateTemplateItemInput,
@@ -19,6 +20,7 @@ type TemplateItemsState = {
     currentFilters: TemplateItemFilters;
     loadItemsPage: (page?: number, pageSize?: number, filters?: TemplateItemFilters) => Promise<void>;
     addItem: (data: CreateTemplateItemInput) => Promise<void>;
+    importItems: (rows: CreateTemplateItemInput[]) => Promise<ImportResult<CreateTemplateItemInput>>;
     updateItem: (id: string, data: UpdateTemplateItemInput) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
 };
@@ -61,6 +63,32 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
     addItem: async data => {
         await ItemsApi.create(data);
         await refreshTemplateItemsRuntime(get);
+    },
+
+    importItems: async rows => {
+        const outcomes = await Promise.allSettled(rows.map(row => ItemsApi.create(row)));
+        const failedRows = outcomes.flatMap((outcome, index) => {
+            if (outcome.status === 'fulfilled') {
+                return [];
+            }
+
+            return [{
+                index: index + 1,
+                reason: outcome.reason instanceof Error ? outcome.reason.message : 'Failed to import row',
+                row: rows[index],
+            }];
+        });
+
+        const success = outcomes.length - failedRows.length;
+        if (success > 0) {
+            await refreshTemplateItemsRuntime(get);
+        }
+
+        return {
+            success,
+            failed: failedRows.length,
+            failedRows,
+        };
     },
 
     updateItem: async (id, data) => {

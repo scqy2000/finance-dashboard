@@ -4,6 +4,7 @@ export class TemplateItemsPage {
     readonly page: Page;
     readonly itemsNavButton: Locator;
     readonly createButton: Locator;
+    readonly importButton: Locator;
     readonly searchInput: Locator;
     readonly titleInput: Locator;
     readonly summaryInput: Locator;
@@ -13,6 +14,7 @@ export class TemplateItemsPage {
         this.page = page;
         this.itemsNavButton = page.getByTestId('nav-items');
         this.createButton = page.getByTestId('template-items-create-button');
+        this.importButton = page.getByTestId('template-items-import-button');
         this.searchInput = page.getByTestId('template-items-search-input');
         this.titleInput = page.getByTestId('template-item-title-input');
         this.summaryInput = page.getByTestId('template-item-summary-input');
@@ -46,6 +48,18 @@ export class TemplateItemsPage {
 
     rowByTitle(title: string) {
         return this.page.locator('[data-testid^="template-item-row-"]').filter({ hasText: title }).first();
+    }
+
+    async importCsv(name: string, content: string) {
+        await this.importButton.click();
+        await this.page.getByTestId('template-items-import-file-input').setInputFiles({
+            name,
+            mimeType: 'text/csv',
+            buffer: Buffer.from(content),
+        });
+        await this.page.getByTestId('template-items-import-submit').click();
+        await expect(this.page.getByRole('button', { name: 'Done' })).toBeVisible();
+        await this.page.getByRole('button', { name: 'Done' }).click();
     }
 
     async deleteItem(title: string) {
