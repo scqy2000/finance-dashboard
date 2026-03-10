@@ -158,6 +158,56 @@ pub fn delete_item(connection: &mut Connection, id: &str) -> Result<(), rusqlite
     Ok(())
 }
 
+pub fn delete_items_batch(
+    connection: &mut Connection,
+    ids: &[String],
+) -> Result<usize, rusqlite::Error> {
+    let transaction = connection.transaction()?;
+    let mut deleted = 0usize;
+
+    for id in ids {
+        let affected_rows =
+            transaction.execute("DELETE FROM template_items WHERE id = ?1", params![id])?;
+        if affected_rows == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
+        deleted += affected_rows;
+    }
+
+    transaction.commit()?;
+    Ok(deleted)
+}
+
+pub fn update_items_status_batch(
+    connection: &mut Connection,
+    ids: &[String],
+    status: &str,
+) -> Result<usize, rusqlite::Error> {
+    let transaction = connection.transaction()?;
+    let mut updated = 0usize;
+
+    for id in ids {
+        let affected_rows = transaction.execute(
+            r#"
+            UPDATE template_items
+            SET status = ?2,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?1
+            "#,
+            params![id, status],
+        )?;
+
+        if affected_rows == 0 {
+            return Err(rusqlite::Error::QueryReturnedNoRows);
+        }
+
+        updated += affected_rows;
+    }
+
+    transaction.commit()?;
+    Ok(updated)
+}
+
 pub fn list_item_steps(
     connection: &Connection,
     item_id: &str,

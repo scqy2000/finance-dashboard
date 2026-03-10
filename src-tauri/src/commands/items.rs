@@ -175,6 +175,42 @@ pub fn delete_template_item(id: String, state: State<'_, DbState>) -> Result<(),
 }
 
 #[tauri::command]
+pub fn delete_template_items_batch(
+    ids: Vec<String>,
+    state: State<'_, DbState>,
+) -> Result<usize, String> {
+    let mut connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    let normalized_ids = normalize_ids(ids)?;
+    items_repository::delete_items_batch(&mut connection, &normalized_ids)
+        .map_err(map_item_repository_error)
+}
+
+#[tauri::command]
+pub fn update_template_items_status_batch(
+    ids: Vec<String>,
+    status: String,
+    state: State<'_, DbState>,
+) -> Result<usize, String> {
+    let mut connection = state
+        .0
+        .lock()
+        .map_err(|error| format!("failed to lock database: {error}"))?;
+
+    let normalized_ids = normalize_ids(ids)?;
+    let normalized_status = normalize_status(Some(status.as_str()))?;
+    items_repository::update_items_status_batch(
+        &mut connection,
+        &normalized_ids,
+        &normalized_status,
+    )
+    .map_err(map_item_repository_error)
+}
+
+#[tauri::command]
 pub fn get_template_item_steps(
     item_id: String,
     state: State<'_, DbState>,
@@ -266,6 +302,26 @@ fn normalize_title(value: &str) -> Result<String, String> {
     Ok(normalized.to_string())
 }
 
+fn normalize_ids(ids: Vec<String>) -> Result<Vec<String>, String> {
+    let mut normalized: Vec<String> = Vec::new();
+
+    for id in ids {
+        let trimmed = id.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if !normalized.iter().any(|existing| existing == trimmed) {
+            normalized.push(trimmed.to_string());
+        }
+    }
+
+    if normalized.is_empty() {
+        return Err("at least one item id is required".to_string());
+    }
+
+    Ok(normalized)
+}
+
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value.and_then(|item| {
         let normalized = item.trim().to_string();
@@ -331,7 +387,7 @@ fn map_step_repository_error(error: rusqlite::Error) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_status, normalize_step_status, normalize_title};
+    use super::{normalize_ids, normalize_status, normalize_step_status, normalize_title};
 
     #[test]
     fn status_normalization_rejects_invalid_values() {
@@ -349,5 +405,19 @@ mod tests {
     fn title_normalization_requires_content() {
         assert!(normalize_title("   ").is_err());
         assert_eq!(normalize_title("  Sample  ").unwrap(), "Sample");
+    }
+
+    #[test]
+    fn id_normalization_requires_at_least_one_unique_id() {
+        assert!(normalize_ids(vec!["   ".to_string()]).is_err());
+        assert_eq!(
+            normalize_ids(vec![
+                "one".to_string(),
+                "one".to_string(),
+                " two ".to_string()
+            ])
+            .unwrap(),
+            vec!["one".to_string(), "two".to_string()]
+        );
     }
 }

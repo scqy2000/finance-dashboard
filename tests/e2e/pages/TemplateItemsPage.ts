@@ -12,6 +12,7 @@ export class TemplateItemsPage {
     readonly stepTitleInput: Locator;
     readonly stepStatusSelect: Locator;
     readonly stepSaveButton: Locator;
+    readonly selectAllCheckbox: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -25,6 +26,7 @@ export class TemplateItemsPage {
         this.stepTitleInput = page.getByTestId('template-item-step-title-input');
         this.stepStatusSelect = page.getByTestId('template-item-step-status-select');
         this.stepSaveButton = page.getByTestId('template-item-step-save-button');
+        this.selectAllCheckbox = page.getByTestId('template-items-select-all');
     }
 
     async goto() {
@@ -91,6 +93,23 @@ export class TemplateItemsPage {
 
     async expectRowSteps(title: string, summary: string) {
         await expect(this.rowByTitle(title).getByText(summary)).toBeVisible();
+    }
+
+    async selectItem(title: string) {
+        await this.rowByTitle(title).locator('[data-testid^="template-item-select-"]').check();
+    }
+
+    async bulkArchiveSelected() {
+        await this.page.getByTestId('template-items-bulk-archive').click();
+    }
+
+    async bulkDeleteSelected() {
+        await this.page.getByTestId('template-items-bulk-delete').click();
+        await this.page.getByTestId('confirm-accept').click();
+    }
+
+    async expectRowStatus(title: string, status: 'draft' | 'active' | 'archived') {
+        await expect(this.rowByTitle(title).getByText(status, { exact: true })).toBeVisible();
     }
 
     async deleteItem(title: string) {

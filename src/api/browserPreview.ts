@@ -1,5 +1,7 @@
 import type {
     AppInfo,
+    BulkTemplateItemsInput,
+    BulkUpdateTemplateItemStatusInput,
     CreateTemplateItemInput,
     CreateTemplateItemStepInput,
     TemplateItem,
@@ -195,6 +197,23 @@ const computeOverview = (items: TemplateItem[]): TemplateOverview => ({
     draft_items: items.filter(item => item.status === 'draft').length,
 });
 
+const requireExistingItemIds = (items: TemplateItem[], ids: string[]) => {
+    const itemIds = new Set(items.map(item => item.id));
+    for (const id of ids) {
+        if (!itemIds.has(id)) {
+            throw new Error('item not found');
+        }
+    }
+};
+
+const normalizeBatchIds = (input: BulkTemplateItemsInput) => {
+    const ids = Array.from(new Set(input.ids.map(id => id.trim()).filter(Boolean)));
+    if (ids.length === 0) {
+        throw new Error('at least one item id is required');
+    }
+    return ids;
+};
+
 export const BrowserPreviewApi = {
     async getAll(limit?: number) {
         return readPreviewItems().slice(0, limit ?? 5000);
@@ -267,6 +286,37 @@ export const BrowserPreviewApi = {
         const steps = readPreviewStepsRaw();
         writePreviewItems(items.filter(item => item.id !== id));
         writePreviewSteps(steps.filter(step => step.item_id !== id));
+    },
+
+    async deleteMany(input: BulkTemplateItemsInput) {
+        const ids = normalizeBatchIds(input);
+        const items = readPreviewItemsRaw();
+        requireExistingItemIds(items, ids);
+        const steps = readPreviewStepsRaw();
+        const idSet = new Set(ids);
+        writePreviewItems(items.filter(item => !idSet.has(item.id)));
+        writePreviewSteps(steps.filter(step => !idSet.has(step.item_id)));
+        return ids.length;
+    },
+
+    async updateStatusMany(input: BulkUpdateTemplateItemStatusInput) {
+        const ids = normalizeBatchIds(input);
+        const items = readPreviewItemsRaw();
+        requireExistingItemIds(items, ids);
+        const idSet = new Set(ids);
+        const timestamp = new Date().toISOString();
+        writePreviewItems(
+            items.map(item =>
+                idSet.has(item.id)
+                    ? {
+                          ...item,
+                          status: input.status,
+                          updated_at: timestamp,
+                      }
+                    : item,
+            ),
+        );
+        return ids.length;
     },
 
     async getSteps(itemId: string) {

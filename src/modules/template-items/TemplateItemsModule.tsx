@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileDown, Plus, RefreshCcw, Upload } from 'lucide-react';
+import { Archive, Download, FileDown, Plus, RefreshCcw, Trash2, Upload } from 'lucide-react';
 import type { TemplateItem } from '../../api/types';
 import { ItemsApi } from '../../api/client';
 import { downloadTemplateItemsCsv, downloadTemplateItemsCsvSample } from './export/csv';
@@ -71,12 +71,46 @@ export function TemplateItemsModule() {
                 onApply={controller.handleApplyFilters}
             />
 
+            {controller.selectedItems.length > 0 && (
+                <article className="glass-panel flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between" data-testid="template-items-bulk-toolbar">
+                    <div>
+                        <div className="text-sm font-semibold text-[var(--text-primary)]">{controller.selectedItems.length} selected</div>
+                        <div className="text-xs text-[var(--text-secondary)]">
+                            Use this as the template reference for batch state changes and transactional batch delete.
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                        <button type="button" className="btn-secondary" data-testid="template-items-bulk-active" onClick={() => void controller.handleBulkStatusUpdate('active')}>
+                            Active
+                        </button>
+                        <button type="button" className="btn-secondary" data-testid="template-items-bulk-archive" onClick={() => void controller.handleBulkStatusUpdate('archived')}>
+                            <Archive size={16} />
+                            Archive
+                        </button>
+                        <button type="button" className="btn-secondary" data-testid="template-items-bulk-draft" onClick={() => void controller.handleBulkStatusUpdate('draft')}>
+                            Draft
+                        </button>
+                        <button type="button" className="btn-secondary" data-testid="template-items-bulk-clear" onClick={() => controller.setSelectedItemIds([])}>
+                            Clear
+                        </button>
+                        <button type="button" className="btn-secondary" data-testid="template-items-bulk-delete" onClick={() => void controller.handleBulkDelete()}>
+                            <Trash2 size={16} />
+                            Delete
+                        </button>
+                    </div>
+                </article>
+            )}
+
             <TemplateItemsList
                 itemsPage={controller.itemsPage}
                 itemsLoading={controller.itemsLoading}
                 itemsError={controller.itemsError}
                 currentPageSize={controller.currentPageSize}
                 emptyStateMessage={controller.emptyStateMessage}
+                selectedItemIds={controller.selectedItemIds}
+                allVisibleSelected={controller.allVisibleSelected}
+                onToggleSelected={controller.toggleSelectedItem}
+                onToggleSelectAllVisible={controller.toggleSelectAllVisible}
                 onEdit={item => {
                     controller.setEditingItem(item);
                     controller.setIsModalOpen(true);

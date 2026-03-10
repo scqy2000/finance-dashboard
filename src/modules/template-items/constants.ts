@@ -25,7 +25,7 @@ export const templateItemsCopy = {
     eyebrow: 'Example CRUD',
     title: 'Items',
     description:
-        'This module is intentionally small but complete: filters, pagination, create, update and delete. Replace the entity shape, keep the control flow.',
+        'This module is intentionally small but complete: filters, pagination, batch actions, create, update and delete. Replace the entity shape, keep the control flow.',
     deleteTitle: 'Delete template item',
     deleteDescription:
         'This keeps the delete flow in template core so new projects have a complete reference loop.',

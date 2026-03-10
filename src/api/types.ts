@@ -65,6 +65,14 @@ export interface UpdateTemplateItemStepInput {
     status?: TemplateItemStepStatus;
 }
 
+export interface BulkTemplateItemsInput {
+    ids: string[];
+}
+
+export interface BulkUpdateTemplateItemStatusInput extends BulkTemplateItemsInput {
+    status: TemplateItemStatus;
+}
+
 export interface ImportFailure<T> {
     index: number;
     reason: string;

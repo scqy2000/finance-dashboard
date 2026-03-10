@@ -55,4 +55,28 @@ test.describe('template smoke flow', () => {
 
         await itemsPage.expectRowSteps(itemTitle, 'Steps 1/1 done');
     });
+
+    test('can batch archive and batch delete selected items in browser preview mode', async ({ page }) => {
+        const itemsPage = new TemplateItemsPage(page);
+        const firstTitle = `Bulk item A ${Date.now()}`;
+        const secondTitle = `Bulk item B ${Date.now()}`;
+
+        await itemsPage.goto();
+        await itemsPage.openItems();
+        await itemsPage.createItem(firstTitle, 'First bulk item.');
+        await itemsPage.createItem(secondTitle, 'Second bulk item.');
+        await itemsPage.search('Bulk item');
+
+        await itemsPage.selectItem(firstTitle);
+        await itemsPage.selectItem(secondTitle);
+        await expect(page.getByTestId('template-items-bulk-toolbar')).toContainText('2 selected');
+
+        await itemsPage.bulkArchiveSelected();
+        await itemsPage.expectRowStatus(firstTitle, 'archived');
+        await itemsPage.expectRowStatus(secondTitle, 'archived');
+
+        await itemsPage.bulkDeleteSelected();
+        await expect(itemsPage.rowByTitle(firstTitle)).toHaveCount(0);
+        await expect(itemsPage.rowByTitle(secondTitle)).toHaveCount(0);
+    });
 });

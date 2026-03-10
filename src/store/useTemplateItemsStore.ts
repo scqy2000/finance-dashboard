@@ -5,6 +5,7 @@ import type {
     ImportResult,
     TemplateItemFilters,
     TemplateItemPage,
+    TemplateItemStatus,
     UpdateTemplateItemInput,
 } from '../api/types';
 import { useAppShellStore } from './useAppShellStore';
@@ -23,6 +24,8 @@ type TemplateItemsState = {
     importItems: (rows: CreateTemplateItemInput[]) => Promise<ImportResult<CreateTemplateItemInput>>;
     updateItem: (id: string, data: UpdateTemplateItemInput) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
+    deleteItems: (ids: string[]) => Promise<void>;
+    updateItemsStatus: (ids: string[], status: TemplateItemStatus) => Promise<void>;
 };
 
 const defaultFilters: TemplateItemFilters = { query: '', status: 'all' };
@@ -98,16 +101,42 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
 
     deleteItem: async id => {
         await ItemsApi.delete(id);
+        adjustPageAfterDeletion(set, get, 1);
+        await refreshTemplateItemsRuntime(get);
+    },
 
-        const { itemsPage, currentPage } = get();
-        const shouldStepBack = currentPage > 1 && itemsPage && itemsPage.items.length <= 1;
-        if (shouldStepBack) {
-            set({ currentPage: currentPage - 1 });
+    deleteItems: async ids => {
+        if (ids.length === 0) {
+            return;
         }
 
+        await ItemsApi.deleteMany({ ids });
+        adjustPageAfterDeletion(set, get, ids.length);
+        await refreshTemplateItemsRuntime(get);
+    },
+
+    updateItemsStatus: async (ids, status) => {
+        if (ids.length === 0) {
+            return;
+        }
+
+        await ItemsApi.updateStatusMany({ ids, status });
         await refreshTemplateItemsRuntime(get);
     },
 }));
+
+function adjustPageAfterDeletion(
+    set: (partial: Partial<TemplateItemsState>) => void,
+    get: () => TemplateItemsState,
+    removedCount: number,
+) {
+    const { itemsPage, currentPage } = get();
+    const visibleCount = itemsPage?.items.length ?? 0;
+    const shouldStepBack = currentPage > 1 && visibleCount > 0 && removedCount >= visibleCount;
+    if (shouldStepBack) {
+        set({ currentPage: currentPage - 1 });
+    }
+}
 
 async function refreshTemplateItemsRuntime(get: () => TemplateItemsState) {
     const { currentPage, currentPageSize, currentFilters, loadItemsPage } = get();

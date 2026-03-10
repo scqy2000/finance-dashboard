@@ -31,6 +31,8 @@ pub fn run() {
             commands::items::create_template_item,
             commands::items::update_template_item,
             commands::items::delete_template_item,
+            commands::items::delete_template_items_batch,
+            commands::items::update_template_items_status_batch,
             commands::items::get_template_item_steps,
             commands::items::create_template_item_step,
             commands::items::update_template_item_step,

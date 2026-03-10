@@ -2,6 +2,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { BrowserPreviewApi, isBrowserPreview } from './browserPreview';
 import type {
     AppInfo,
+    BulkTemplateItemsInput,
+    BulkUpdateTemplateItemStatusInput,
     CreateTemplateItemInput,
     CreateTemplateItemStepInput,
     TemplateItem,
@@ -58,6 +60,20 @@ export const ItemsApi = {
             return BrowserPreviewApi.delete(id);
         }
         return invoke<void>('delete_template_item', { id });
+    },
+
+    async deleteMany(input: BulkTemplateItemsInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.deleteMany(input);
+        }
+        return invoke<number>('delete_template_items_batch', { ids: input.ids });
+    },
+
+    async updateStatusMany(input: BulkUpdateTemplateItemStatusInput) {
+        if (isBrowserPreview()) {
+            return BrowserPreviewApi.updateStatusMany(input);
+        }
+        return invoke<number>('update_template_items_status_batch', { ids: input.ids, status: input.status });
     },
 
     async getSteps(itemId: string) {
@@ -129,3 +145,4 @@ export const SystemApi = {
         return invoke<AppInfo>('get_app_info');
     },
 };
+

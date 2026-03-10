@@ -72,7 +72,18 @@ The runtime now includes a parent-child sample:
 
 If the target app has related entities, start by cloning this sample instead of inventing a fresh mutation flow.
 
-### 5. Pull advanced reference code only when needed
+### 5. Reuse the batch-action sample before inventing list-side workflows
+
+The runtime now also includes batch list operations:
+
+- page-scoped selection state lives in the feature controller, not the global store
+- batch status updates reuse the same store refresh contract as single-item writes
+- batch delete runs in one backend transaction and cascades child deletes
+- browser preview and Playwright tests cover the same selection contract
+
+If the target app needs moderation, triage, or inbox-style processing, keep this pattern and swap the domain copy.
+
+### 6. Pull advanced reference code only when needed
 
 Use:
 
@@ -88,6 +99,7 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - theme changes persist
 - one record can be created, edited, deleted
 - one child record can be created and the parent aggregate updates
+- selected records can be batch-updated and batch-deleted
 - CSV import/export works for the example entity
 - snapshot export/import restores data and appearance
 - pagination still works
@@ -102,4 +114,5 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - letting page files grow into feature controllers
 - keeping one global store after multiple domains appear
 - computing parent aggregate state only in the client instead of persisting child writes correctly
+- putting batch selection state into global runtime before it actually needs to be shared
 - adding secret handling without a fresh threat model
