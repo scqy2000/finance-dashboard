@@ -108,6 +108,15 @@ export class TemplateItemsPage {
         await this.page.getByTestId('confirm-accept').click();
     }
 
+    async undoLastImport() {
+        await this.page.getByTestId('template-items-undo-import').click();
+        await this.page.getByTestId('confirm-accept').click();
+    }
+
+    async expectImportUndoBanner() {
+        await expect(this.page.getByTestId('template-items-import-undo-banner')).toBeVisible();
+    }
+
     async expectRowStatus(title: string, status: 'draft' | 'active' | 'archived') {
         await expect(this.rowByTitle(title).getByText(status, { exact: true })).toBeVisible();
     }

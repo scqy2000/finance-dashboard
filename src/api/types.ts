@@ -84,6 +84,13 @@ export interface ImportResult<T> {
     success: number;
     failed: number;
     failedRows?: Array<ImportFailure<T>>;
+    importedIds?: string[];
+}
+
+export interface RecentImportBatch {
+    ids: string[];
+    createdAt: string;
+    count: number;
 }
 
 export interface AppInfo {

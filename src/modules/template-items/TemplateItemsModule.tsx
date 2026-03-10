@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Archive, Download, FileDown, Plus, RefreshCcw, Trash2, Upload } from 'lucide-react';
+import { Archive, Download, FileDown, History, Plus, RefreshCcw, Trash2, Upload, X } from 'lucide-react';
 import type { TemplateItem } from '../../api/types';
 import { ItemsApi } from '../../api/client';
 import { downloadTemplateItemsCsv, downloadTemplateItemsCsvSample } from './export/csv';
@@ -10,6 +10,14 @@ import { TemplateItemsImportModal } from './components/TemplateItemsImportModal'
 import { TemplateItemsList } from './components/TemplateItemsList';
 import { templateItemsCopy } from './constants';
 import { useTemplateItemsController } from './useTemplateItemsController';
+
+function formatImportTime(value: string) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return value;
+    }
+    return parsed.toLocaleTimeString();
+}
 
 export function TemplateItemsModule() {
     const controller = useTemplateItemsController();
@@ -70,6 +78,30 @@ export function TemplateItemsModule() {
                 onChange={controller.setDraftFilters}
                 onApply={controller.handleApplyFilters}
             />
+
+            {controller.lastImportBatch && (
+                <article className="glass-panel flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between" data-testid="template-items-import-undo-banner">
+                    <div>
+                        <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                            <History size={16} />
+                            Last import ready to undo
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--text-secondary)]">
+                            {controller.lastImportBatch.count} items imported at {formatImportTime(controller.lastImportBatch.createdAt)}. Any other write clears this rollback handle.
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                        <button type="button" className="btn-secondary" data-testid="template-items-undo-import" onClick={() => void controller.handleUndoLastImport()}>
+                            <History size={16} />
+                            Undo import
+                        </button>
+                        <button type="button" className="btn-secondary" data-testid="template-items-dismiss-import-undo" onClick={controller.clearLastImportBatch}>
+                            <X size={16} />
+                            Dismiss
+                        </button>
+                    </div>
+                </article>
+            )}
 
             {controller.selectedItems.length > 0 && (
                 <article className="glass-panel flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between" data-testid="template-items-bulk-toolbar">

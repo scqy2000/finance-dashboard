@@ -324,7 +324,7 @@ export function TemplateItemsImportModal({ isOpen, onClose, onImport }: Template
                             <div className="rounded-[var(--radius-md)] bg-[var(--color-primary-light)] px-4 py-4 flex items-center gap-3">
                                 <CheckCircle2 size={20} className="text-[var(--color-primary)]" />
                                 <div className="text-sm text-[var(--text-primary)]">
-                                    Imported {result.success} rows, failed {result.failed} rows.
+                                    Imported {result.success} rows, failed {result.failed} rows. Use the undo banner on the page to roll back the last successful import if needed.
                                 </div>
                             </div>
 
@@ -371,3 +371,4 @@ export function TemplateItemsImportModal({ isOpen, onClose, onImport }: Template
         </div>
     );
 }
+

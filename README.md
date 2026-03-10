@@ -9,7 +9,7 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - Rust command modules split by concern instead of one monolithic file
 - SQLite initialization, lightweight `user_version` migrations, WAL mode, and one seeded example entity
 - Theme tokens, local appearance preferences, toast and confirm feedback primitives
-- One complete CRUD example with pagination, batch status/delete actions, CSV import/export, sample template download, and a persisted app setting
+- One complete CRUD example with pagination, batch status/delete actions, CSV import/export, last-import undo, sample template download, and a persisted app setting
 - One associated-entity sample: parent items with child steps, aggregate counts, and transactional child writes
 - JSON snapshot export/import for local-first backup and restore, including child records
 
@@ -39,12 +39,13 @@ A reusable local-first desktop starter extracted from the original Finance Dashb
 - Backend update and delete flows read the current database record instead of trusting stale client copies
 - Parent-child mutations refresh parent aggregates through persisted state, not client-side guesses
 - Batch writes use one transaction boundary and one runtime refresh path
+- Import rollback keeps only the most recent successful import handle and clears it after any other write
 - Non-sensitive appearance preferences stay in local storage; SQLite-backed settings are explicit and opt-in
 
 ## Template pages
 
 - `Overview`: runtime status and template intent
-- `Items`: example CRUD entity with pagination, batch actions, child steps, and CSV import/export
+- `Items`: example CRUD entity with pagination, batch actions, child steps, CSV import/export, and last-import undo
 - `References`: direct reuse vs optional reference material
 - `Settings`: local appearance settings, persisted note, and JSON snapshot import/export
 
@@ -72,7 +73,7 @@ That mode exists for three reasons:
 
 - fast UI review without starting the desktop runtime
 - stable Playwright smoke tests for the template CRUD loop
-- validating parent-child and batch flows before wiring a new backend
+- validating parent-child, import rollback, and batch flows before wiring a new backend
 
 ## Starting a new app from this template
 

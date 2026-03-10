@@ -37,6 +37,25 @@ test.describe('template smoke flow', () => {
         await expect(itemsPage.rowByTitle(importTitle)).toBeVisible();
     });
 
+    test('can undo the last csv import in browser preview mode', async ({ page }) => {
+        const itemsPage = new TemplateItemsPage(page);
+        const importTitle = `Undo import ${Date.now()}`;
+
+        await itemsPage.goto();
+        await itemsPage.openItems();
+        await itemsPage.importCsv(
+            'template-items.csv',
+            `title,summary,status\n${importTitle},Imported then rolled back,active`,
+        );
+        await itemsPage.expectImportUndoBanner();
+        await itemsPage.search(importTitle);
+        await expect(itemsPage.rowByTitle(importTitle)).toBeVisible();
+
+        await itemsPage.undoLastImport();
+        await expect(page.getByTestId('template-items-import-undo-banner')).toHaveCount(0);
+        await expect(itemsPage.rowByTitle(importTitle)).toHaveCount(0);
+    });
+
     test('can manage child steps and refresh parent aggregates in browser preview mode', async ({ page }) => {
         const itemsPage = new TemplateItemsPage(page);
         const itemTitle = `Parent item ${Date.now()}`;

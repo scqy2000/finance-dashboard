@@ -83,7 +83,18 @@ The runtime now also includes batch list operations:
 
 If the target app needs moderation, triage, or inbox-style processing, keep this pattern and swap the domain copy.
 
-### 6. Pull advanced reference code only when needed
+### 6. Reuse the import-rollback sample before building complex ingest recovery
+
+The runtime keeps one intentionally constrained rollback path:
+
+- only the most recent successful CSV import is undoable
+- undo reuses the same batch delete boundary as other destructive list actions
+- any other write clears the rollback handle to avoid stale partial recovery
+- browser preview and Playwright tests exercise the same contract
+
+If the target app needs richer import history, start from this minimal contract and extend it deliberately.
+
+### 7. Pull advanced reference code only when needed
 
 Use:
 
@@ -100,6 +111,7 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - one record can be created, edited, deleted
 - one child record can be created and the parent aggregate updates
 - selected records can be batch-updated and batch-deleted
+- the most recent CSV import can be undone
 - CSV import/export works for the example entity
 - snapshot export/import restores data and appearance
 - pagination still works
@@ -115,4 +127,5 @@ Do not import finance files directly into runtime core. Copy patterns, not names
 - keeping one global store after multiple domains appear
 - computing parent aggregate state only in the client instead of persisting child writes correctly
 - putting batch selection state into global runtime before it actually needs to be shared
+- keeping multiple live import rollback handles without a clear invalidation rule
 - adding secret handling without a fresh threat model

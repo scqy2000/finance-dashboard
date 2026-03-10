@@ -3,6 +3,7 @@ import { ItemsApi } from '../api/client';
 import type {
     CreateTemplateItemInput,
     ImportResult,
+    RecentImportBatch,
     TemplateItemFilters,
     TemplateItemPage,
     TemplateItemStatus,
@@ -19,9 +20,12 @@ type TemplateItemsState = {
     currentPage: number;
     currentPageSize: number;
     currentFilters: TemplateItemFilters;
+    lastImportBatch: RecentImportBatch | null;
     loadItemsPage: (page?: number, pageSize?: number, filters?: TemplateItemFilters) => Promise<void>;
     addItem: (data: CreateTemplateItemInput) => Promise<void>;
     importItems: (rows: CreateTemplateItemInput[]) => Promise<ImportResult<CreateTemplateItemInput>>;
+    undoLastImport: () => Promise<void>;
+    clearLastImportBatch: () => void;
     updateItem: (id: string, data: UpdateTemplateItemInput) => Promise<void>;
     deleteItem: (id: string) => Promise<void>;
     deleteItems: (ids: string[]) => Promise<void>;
@@ -37,6 +41,7 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
     currentPage: 1,
     currentPageSize: DEFAULT_PAGE_SIZE,
     currentFilters: defaultFilters,
+    lastImportBatch: null,
 
     loadItemsPage: async (page, pageSize, filters) => {
         const nextPage = page ?? get().currentPage;
@@ -64,6 +69,7 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
     },
 
     addItem: async data => {
+        clearLastImportBatch(set);
         await ItemsApi.create(data);
         await refreshTemplateItemsRuntime(get);
     },
@@ -82,24 +88,54 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
             }];
         });
 
-        const success = outcomes.length - failedRows.length;
+        const importedIds = outcomes.flatMap(outcome => (outcome.status === 'fulfilled' ? [outcome.value.id] : []));
+        const success = importedIds.length;
+
         if (success > 0) {
+            set({
+                lastImportBatch: {
+                    ids: importedIds,
+                    count: importedIds.length,
+                    createdAt: new Date().toISOString(),
+                },
+            });
             await refreshTemplateItemsRuntime(get);
+        } else {
+            clearLastImportBatch(set);
         }
 
         return {
             success,
             failed: failedRows.length,
             failedRows,
+            importedIds,
         };
     },
 
+    undoLastImport: async () => {
+        const batch = get().lastImportBatch;
+        if (!batch || batch.ids.length === 0) {
+            return;
+        }
+
+        await ItemsApi.deleteMany({ ids: batch.ids });
+        clearLastImportBatch(set);
+        adjustPageAfterDeletion(set, get, batch.ids.length);
+        await refreshTemplateItemsRuntime(get);
+    },
+
+    clearLastImportBatch: () => {
+        clearLastImportBatch(set);
+    },
+
     updateItem: async (id, data) => {
+        clearLastImportBatch(set);
         await ItemsApi.update(id, data);
         await refreshTemplateItemsRuntime(get);
     },
 
     deleteItem: async id => {
+        clearLastImportBatch(set);
         await ItemsApi.delete(id);
         adjustPageAfterDeletion(set, get, 1);
         await refreshTemplateItemsRuntime(get);
@@ -110,6 +146,7 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
             return;
         }
 
+        clearLastImportBatch(set);
         await ItemsApi.deleteMany({ ids });
         adjustPageAfterDeletion(set, get, ids.length);
         await refreshTemplateItemsRuntime(get);
@@ -120,10 +157,15 @@ export const useTemplateItemsStore = create<TemplateItemsState>((set, get) => ({
             return;
         }
 
+        clearLastImportBatch(set);
         await ItemsApi.updateStatusMany({ ids, status });
         await refreshTemplateItemsRuntime(get);
     },
 }));
+
+function clearLastImportBatch(set: (partial: Partial<TemplateItemsState>) => void) {
+    set({ lastImportBatch: null });
+}
 
 function adjustPageAfterDeletion(
     set: (partial: Partial<TemplateItemsState>) => void,

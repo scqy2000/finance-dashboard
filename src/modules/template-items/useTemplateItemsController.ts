@@ -13,9 +13,12 @@ export function useTemplateItemsController() {
     const currentFilters = useTemplateItemsStore(state => state.currentFilters);
     const currentPage = useTemplateItemsStore(state => state.currentPage);
     const currentPageSize = useTemplateItemsStore(state => state.currentPageSize);
+    const lastImportBatch = useTemplateItemsStore(state => state.lastImportBatch);
     const loadItemsPage = useTemplateItemsStore(state => state.loadItemsPage);
     const addItem = useTemplateItemsStore(state => state.addItem);
     const importItems = useTemplateItemsStore(state => state.importItems);
+    const undoLastImport = useTemplateItemsStore(state => state.undoLastImport);
+    const clearLastImportBatch = useTemplateItemsStore(state => state.clearLastImportBatch);
     const updateItem = useTemplateItemsStore(state => state.updateItem);
     const deleteItem = useTemplateItemsStore(state => state.deleteItem);
     const deleteItems = useTemplateItemsStore(state => state.deleteItems);
@@ -130,6 +133,29 @@ export function useTemplateItemsController() {
         }
     };
 
+    const handleUndoLastImport = async () => {
+        if (!lastImportBatch) {
+            return;
+        }
+
+        const accepted = await confirm(
+            'Undo last import',
+            `Remove ${lastImportBatch.count} items created by the last CSV import?\n\nThis action also removes any child steps created under those imported items.`,
+        );
+
+        if (!accepted) {
+            return;
+        }
+
+        try {
+            await undoLastImport();
+            setSelectedItemIds([]);
+            toast(`Removed ${lastImportBatch.count} imported items.`, 'success');
+        } catch (error) {
+            toast(getErrorMessage(error, 'Failed to undo last import'), 'error');
+        }
+    };
+
     const toggleSelectedItem = (itemId: string) => {
         setSelectedItemIds(prev => (prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]));
     };
@@ -161,15 +187,18 @@ export function useTemplateItemsController() {
         selectedItemIds,
         selectedItems,
         allVisibleSelected,
+        lastImportBatch,
         setIsModalOpen,
         setEditingItem,
         setSelectedItemIds,
+        clearLastImportBatch,
         handleApplyFilters,
         handleImportRows: importItems,
         handleSaveItem,
         handleDelete,
         handleBulkDelete,
         handleBulkStatusUpdate,
+        handleUndoLastImport,
         toggleSelectedItem,
         toggleSelectAllVisible,
         refreshPage: () => loadItemsPage(currentPage, currentPageSize, currentFilters),
